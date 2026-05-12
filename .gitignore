@@ -15,3 +15,6 @@ policy-frontend/.env.local
 __pycache__/
 *.py[cod]
 .DS_Store
+.env
+.pyc
+.venv/

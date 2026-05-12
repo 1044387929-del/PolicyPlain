@@ -24,6 +24,7 @@ python -m venv .venv
 pip install -r requirements.txt
 copy .env.example .env
 # 在 .env 中配置本地 PG（DB_* 或 DATABASE_URL），并先 CREATE DATABASE
+# 执行迁移建表：python -m alembic upgrade head（或 policy-backend/scripts 下 init 脚本）
 # 可选：填写 OPENAI_API_KEY / OPENAI_BASE_URL / OPENAI_MODEL
 python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
 ```
