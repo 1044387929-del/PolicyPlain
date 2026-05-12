@@ -4,6 +4,7 @@ hr-frontend-src/*
 
 # PolicyPlain
 policy-backend/.env
+policy-backend/settings/setting.env
 policy-backend/data/
 policy-backend/__pycache__/
 policy-backend/.venv/

@@ -11,4 +11,4 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 @router.get("/me", response_model=UserPublic)
 async def me(current: UserModel = Depends(get_current_user)):
-    return UserPublic(id=current.id, username=current.username)
+    return UserPublic(id=current.id, email=current.email)

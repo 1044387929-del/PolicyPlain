@@ -2,7 +2,7 @@ import request from '@/apis/request'
 
 export interface PolicyUser {
   id: string
-  username: string
+  email: string
 }
 
 export interface LoginResponse {
@@ -12,11 +12,23 @@ export interface LoginResponse {
   user: PolicyUser
 }
 
-export function register(data: { username: string; password: string }) {
+export function sendRegisterCode(data: { email: string }) {
+  return request.post<{ result: string; expires_in: number; resend_after: number }>(
+    '/auth/register/send-code',
+    data,
+  )
+}
+
+export function register(data: {
+  email: string
+  password: string
+  password_confirm: string
+  code: string
+}) {
   return request.post<{ result: string }>('/auth/register', data)
 }
 
-export function login(data: { username: string; password: string }) {
+export function login(data: { email: string; password: string }) {
   return request.post<LoginResponse>('/auth/login', data)
 }
 

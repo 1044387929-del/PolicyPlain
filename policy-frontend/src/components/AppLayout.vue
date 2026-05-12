@@ -7,7 +7,7 @@
         <el-button text type="primary" @click="$router.push('/history')">历史</el-button>
       </div>
       <div class="flex items-center gap-2">
-        <span class="text-sm text-stone-600">{{ userStore.user?.username }}</span>
+        <span class="text-sm text-stone-600">{{ userStore.user?.email }}</span>
         <el-button size="small" @click="onLogout">退出</el-button>
       </div>
     </el-header>

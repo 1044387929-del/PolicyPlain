@@ -8,8 +8,8 @@ class UserRepo:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def get_by_username(self, username: str) -> UserModel | None:
-        r = await self.session.execute(select(UserModel).where(UserModel.username == username))
+    async def get_by_email(self, email: str) -> UserModel | None:
+        r = await self.session.execute(select(UserModel).where(UserModel.email == email))
         return r.scalar_one_or_none()
 
     async def get_by_id(self, user_id: str) -> UserModel | None:

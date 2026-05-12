@@ -1,8 +1,9 @@
 from datetime import timedelta
+from typing import Any
 from urllib.parse import quote_plus
 import os
 
-from pydantic import Field
+from pydantic import AliasChoices, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _SETTINGS_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -25,12 +26,25 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    @model_validator(mode="before")
+    @classmethod
+    def _strip_env_string_quotes(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        for k, v in list(data.items()):
+            if isinstance(v, str):
+                data[k] = v.strip().strip('"').strip("'")
+        return data
+
     # 若设置非空，则优先作为 SQLAlchemy 异步连接串（须含驱动，如 postgresql+asyncpg://...）
     DATABASE_URL: str = Field(default="", validation_alias="DATABASE_URL")
 
     DB_HOST: str = Field(default="127.0.0.1", validation_alias="DB_HOST")
     DB_PORT: int = Field(default=5432, validation_alias="DB_PORT")
-    DB_USER: str = Field(default="postgres", validation_alias="DB_USER")
+    DB_USER: str = Field(
+        default="postgres",
+        validation_alias=AliasChoices("DB_USER", "DB_USERNAME"),
+    )
     DB_PASSWORD: str = Field(default="postgres", validation_alias="DB_PASSWORD")
     DB_NAME: str = Field(default="policy_plain", validation_alias="DB_NAME")
 
@@ -55,6 +69,23 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = Field(default="", validation_alias="OPENAI_API_KEY")
     OPENAI_BASE_URL: str | None = Field(default=None, validation_alias="OPENAI_BASE_URL")
     OPENAI_MODEL: str = Field(default="gpt-4o-mini", validation_alias="OPENAI_MODEL")
+
+    # 注册邮件验证码（QQ 邮箱示例：smtp.qq.com + SSL 465 + 授权码）
+    MAIL_SMTP_HOST: str = Field(default="smtp.qq.com", validation_alias="MAIL_SMTP_HOST")
+    MAIL_SMTP_PORT: int = Field(default=465, validation_alias="MAIL_SMTP_PORT")
+    MAIL_SMTP_TIMEOUT: float = Field(default=30.0, validation_alias="MAIL_SMTP_TIMEOUT")
+    MAIL_USERNAME: str = Field(default="", validation_alias="MAIL_USERNAME")
+    MAIL_PASSWORD: str = Field(default="", validation_alias="MAIL_PASSWORD")
+    MAIL_FROM: str = Field(default="", validation_alias="MAIL_FROM")
+
+    REGISTER_CODE_TTL_SECONDS: int = Field(default=600, ge=60, le=3600, validation_alias="REGISTER_CODE_TTL_SECONDS")
+    REGISTER_CODE_RESEND_SECONDS: int = Field(
+        default=60, ge=15, le=600, validation_alias="REGISTER_CODE_RESEND_SECONDS"
+    )
+
+    @property
+    def mail_configured(self) -> bool:
+        return bool(self.MAIL_USERNAME.strip() and self.MAIL_PASSWORD.strip())
 
     @property
     def resolved_database_url(self) -> str:

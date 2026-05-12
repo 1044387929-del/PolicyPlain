@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 
 export interface PolicyUser {
   id: string
-  username: string
+  email: string
 }
 
 export interface UserState {

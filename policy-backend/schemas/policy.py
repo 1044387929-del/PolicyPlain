@@ -1,22 +1,34 @@
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field, model_validator
 
 
 class UserPublic(BaseModel):
     id: str
-    username: str
+    email: str
 
 
 class RegisterRequest(BaseModel):
-    username: str = Field(min_length=2, max_length=64)
-    password: str = Field(min_length=6, max_length=128)
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
+    password_confirm: str = Field(min_length=8, max_length=128)
+    code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
+
+    @model_validator(mode="after")
+    def passwords_match(self) -> "RegisterRequest":
+        if self.password != self.password_confirm:
+            raise ValueError("两次输入的密码不一致")
+        return self
+
+
+class SendRegisterCodeRequest(BaseModel):
+    email: EmailStr
 
 
 class LoginRequest(BaseModel):
-    username: str
-    password: str
+    email: EmailStr
+    password: str = Field(min_length=1, max_length=128)
 
 
 class LoginResponse(BaseModel):
