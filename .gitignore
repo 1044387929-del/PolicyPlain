@@ -1,1 +1,17 @@
+# Reference projects (optional: remove lines below to version-control them)
 hr-backend/*
+hr-frontend-src/*
+
+# PolicyPlain
+policy-backend/.env
+policy-backend/data/
+policy-backend/__pycache__/
+policy-backend/.venv/
+
+policy-frontend/node_modules/
+policy-frontend/dist/
+policy-frontend/.env.local
+
+__pycache__/
+*.py[cod]
+.DS_Store

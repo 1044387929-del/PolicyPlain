@@ -1,0 +1,12 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Env & local DB
+.env
+data/
+*.db
+
+# Logs
+log/
