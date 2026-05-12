@@ -1,41 +1,23 @@
-"""SMTP 发送（QQ 邮箱等）；同步实现，由路由里 asyncio.to_thread 调用。"""
-
-import asyncio
-import logging
-import smtplib
-from email.message import EmailMessage
+# core/mail.py（与 hr-backend/core/mail.py 同结构：FastMail + ConnectionConfig）
+from fastapi_mail import ConnectionConfig, FastMail
+from pydantic import SecretStr
 
 from settings import settings
 
-logger = logging.getLogger(__name__)
 
-
-def _send_plain_sync(to_email: str, subject: str, body: str) -> None:
-    from_addr = (settings.MAIL_FROM or settings.MAIL_USERNAME).strip()
-    msg = EmailMessage()
-    msg["Subject"] = subject
-    msg["From"] = from_addr
-    msg["To"] = to_email
-    msg.set_content(body)
-    with smtplib.SMTP_SSL(
-        settings.MAIL_SMTP_HOST,
-        settings.MAIL_SMTP_PORT,
-        timeout=settings.MAIL_SMTP_TIMEOUT,
-    ) as smtp:
-        smtp.login(settings.MAIL_USERNAME.strip(), settings.MAIL_PASSWORD.strip())
-        smtp.send_message(msg)
-
-
-async def send_register_verification_email(to_email: str, code: str) -> None:
-    minutes = max(1, settings.REGISTER_CODE_TTL_SECONDS // 60)
-    body = (
-        f"您的 PolicyPlain 注册验证码为：{code}\n\n"
-        f"验证码 {minutes} 分钟内有效，请勿泄露给他人。\n"
-        "如非本人操作，请忽略本邮件。"
+def create_mail_instance() -> FastMail:
+    """创建 FastMail 实例（每次调用返回新实例，线程/协程安全）。"""
+    mail_from = (settings.MAIL_FROM or settings.MAIL_USERNAME).strip()
+    mail_config = ConnectionConfig(
+        MAIL_USERNAME=settings.MAIL_USERNAME.strip(),
+        MAIL_PASSWORD=SecretStr(settings.MAIL_PASSWORD.strip() or ""),
+        MAIL_FROM=mail_from,
+        MAIL_PORT=settings.MAIL_PORT,
+        MAIL_SERVER=settings.MAIL_SERVER,
+        MAIL_FROM_NAME=settings.MAIL_FROM_NAME,
+        MAIL_STARTTLS=settings.MAIL_STARTTLS,
+        MAIL_SSL_TLS=settings.MAIL_SSL_TLS,
+        USE_CREDENTIALS=True,
+        VALIDATE_CERTS=True,
     )
-    await asyncio.to_thread(
-        _send_plain_sync,
-        to_email,
-        "PolicyPlain 注册验证码",
-        body,
-    )
+    return FastMail(mail_config)

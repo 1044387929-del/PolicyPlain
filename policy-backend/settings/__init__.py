@@ -63,17 +63,37 @@ class Settings(BaseSettings):
 
     CORS_ORIGINS: str = Field(default="*", validation_alias="CORS_ORIGINS")
 
+    # Redis（与 hr-backend 一致；供 PolicyCache）
+    REDIS_HOST: str = Field(default="127.0.0.1", validation_alias="REDIS_HOST")
+    REDIS_PORT: int = Field(default=6379, validation_alias="REDIS_PORT")
+
     POLICY_TEXT_MAX_CHARS: int = Field(default=12000, validation_alias="POLICY_TEXT_MAX_CHARS")
     LLM_TIMEOUT_SECONDS: float = Field(default=120.0, validation_alias="LLM_TIMEOUT_SECONDS")
 
-    OPENAI_API_KEY: str = Field(default="", validation_alias="OPENAI_API_KEY")
-    OPENAI_BASE_URL: str | None = Field(default=None, validation_alias="OPENAI_BASE_URL")
-    OPENAI_MODEL: str = Field(default="gpt-4o-mini", validation_alias="OPENAI_MODEL")
+    # 与 hr-backend 一致：百炼 DashScope OpenAI 兼容模式 + 通义千问；密钥可读 OPENAI_API_KEY 或 DASHSCOPE_API_KEY
+    OPENAI_API_KEY: str = Field(
+        default="",
+        validation_alias=AliasChoices("OPENAI_API_KEY", "DASHSCOPE_API_KEY"),
+    )
+    OPENAI_BASE_URL: str = Field(
+        default="https://dashscope.aliyuncs.com/compatible-mode/v1",
+        validation_alias="OPENAI_BASE_URL",
+    )
+    OPENAI_MODEL: str = Field(default="qwen3-max", validation_alias="OPENAI_MODEL")
 
-    # 注册邮件验证码（QQ 邮箱示例：smtp.qq.com + SSL 465 + 授权码）
-    MAIL_SMTP_HOST: str = Field(default="smtp.qq.com", validation_alias="MAIL_SMTP_HOST")
-    MAIL_SMTP_PORT: int = Field(default=465, validation_alias="MAIL_SMTP_PORT")
-    MAIL_SMTP_TIMEOUT: float = Field(default=30.0, validation_alias="MAIL_SMTP_TIMEOUT")
+    # 邮件（字段命名对齐 hr-backend/settings：MAIL_SERVER / MAIL_PORT / MAIL_STARTTLS / MAIL_SSL_TLS）
+    MAIL_SERVER: str = Field(
+        default="smtp.qq.com",
+        validation_alias=AliasChoices("MAIL_SERVER", "MAIL_SMTP_HOST"),
+    )
+    MAIL_PORT: int = Field(
+        default=465,
+        validation_alias=AliasChoices("MAIL_PORT", "MAIL_SMTP_PORT"),
+    )
+    MAIL_STARTTLS: bool = Field(default=False, validation_alias="MAIL_STARTTLS")
+    MAIL_SSL_TLS: bool = Field(default=True, validation_alias="MAIL_SSL_TLS")
+    MAIL_FROM_NAME: str = Field(default="PolicyPlain", validation_alias="MAIL_FROM_NAME")
+    MAIL_SMTP_TIMEOUT: float = Field(default=30.0, validation_alias=AliasChoices("MAIL_SMTP_TIMEOUT", "MAIL_TIMEOUT"))
     MAIL_USERNAME: str = Field(default="", validation_alias="MAIL_USERNAME")
     MAIL_PASSWORD: str = Field(default="", validation_alias="MAIL_PASSWORD")
     MAIL_FROM: str = Field(default="", validation_alias="MAIL_FROM")

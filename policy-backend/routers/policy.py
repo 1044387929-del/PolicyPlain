@@ -3,8 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from dependencies import get_current_user
-from models import get_session
+from dependencies import get_current_user, get_session_instance
 from models.user import PolicyExplanationModel, UserModel
 from repository.policy_repo import PolicyRepo
 from schemas.policy import (
@@ -26,7 +25,7 @@ ALLOWED_TOPICS = frozenset({"general", "medical_insurance", "pension"})
 @router.post("/explain", response_model=ExplainResponse)
 async def explain(
     body: ExplainRequest,
-    session: AsyncSession = Depends(get_session),
+    session: AsyncSession = Depends(get_session_instance),
     current: UserModel = Depends(get_current_user),
 ):
     text = body.text.strip()
@@ -61,7 +60,7 @@ async def explain(
 
 @router.get("/explanations", response_model=ExplanationListResponse)
 async def list_explanations(
-    session: AsyncSession = Depends(get_session),
+    session: AsyncSession = Depends(get_session_instance),
     current: UserModel = Depends(get_current_user),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
@@ -90,7 +89,7 @@ async def list_explanations(
 @router.get("/explanations/{record_id}", response_model=ExplanationDetailResponse)
 async def get_explanation(
     record_id: str,
-    session: AsyncSession = Depends(get_session),
+    session: AsyncSession = Depends(get_session_instance),
     current: UserModel = Depends(get_current_user),
 ):
     async with session.begin():

@@ -24,7 +24,7 @@ common_misunderstandings, uncovered_points, verification_hints, warnings
 def _mock_result(text: str, topic: str) -> dict[str, Any]:
     snippet = (text[:120] + "…") if len(text) > 120 else text
     return {
-        "summary_one_line": f"（演示模式）已收到约 {len(text)} 字、主题 {topic} 的政策片段，请配置 OPENAI_API_KEY 后获得真实解读。",
+        "summary_one_line": f"（演示模式）已收到约 {len(text)} 字、主题 {topic} 的政策片段，请配置 DASHSCOPE_API_KEY 或 OPENAI_API_KEY 后获得真实解读。",
         "applicability": ["演示数据：原文需自行判断是否与您个人情况相关。"],
         "materials": {
             "items": [],
@@ -44,9 +44,10 @@ async def generate_structured_explain(text: str, topic: str) -> dict[str, Any]:
     if not settings.OPENAI_API_KEY.strip():
         return _mock_result(text, topic)
 
+    base = (settings.OPENAI_BASE_URL or "").strip() or "https://dashscope.aliyuncs.com/compatible-mode/v1"
     client = AsyncOpenAI(
         api_key=settings.OPENAI_API_KEY,
-        base_url=settings.OPENAI_BASE_URL or None,
+        base_url=base,
         timeout=httpx.Timeout(settings.LLM_TIMEOUT_SECONDS),
     )
     user_msg = f"主题标签：{topic}\n\n政策原文：\n{text}"

@@ -22,7 +22,7 @@ import { useRoute, useRouter } from 'vue-router'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage } from 'element-plus'
 import AuthLayout from '@/components/AuthLayout.vue'
-import { login } from '@/apis/auth_api'
+import { login } from '@/apis/user_api'
 import { useUserStore } from '@/stores/user'
 
 const router = useRouter()

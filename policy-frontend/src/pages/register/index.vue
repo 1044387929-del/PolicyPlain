@@ -57,7 +57,7 @@ import { useRouter } from 'vue-router'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage } from 'element-plus'
 import AuthLayout from '@/components/AuthLayout.vue'
-import { register, sendRegisterCode } from '@/apis/auth_api'
+import { register, sendRegisterCode } from '@/apis/user_api'
 
 const router = useRouter()
 const formRef = ref<FormInstance>()
@@ -144,7 +144,7 @@ async function submit() {
         email: form.email.trim().toLowerCase(),
         password: form.password,
         password_confirm: form.password_confirm,
-        code: form.code.trim(),
+        invite_code: form.code.trim(),
       })
       ElMessage.success('注册成功，请登录')
       router.push('/login')

@@ -8,13 +8,17 @@ class UserRepo:
     def __init__(self, session: AsyncSession):
         self.session = session
 
+    async def create_user(self, user_data: dict) -> UserModel:
+        user = UserModel(**user_data)
+        self.session.add(user)
+        await self.session.flush()
+        return user
+
     async def get_by_email(self, email: str) -> UserModel | None:
-        r = await self.session.execute(select(UserModel).where(UserModel.email == email))
-        return r.scalar_one_or_none()
+        return await self.session.scalar(select(UserModel).where(UserModel.email == email))
 
     async def get_by_id(self, user_id: str) -> UserModel | None:
-        r = await self.session.execute(select(UserModel).where(UserModel.id == user_id))
-        return r.scalar_one_or_none()
+        return await self.session.scalar(select(UserModel).where(UserModel.id == user_id))
 
     async def create(self, user: UserModel) -> UserModel:
         self.session.add(user)

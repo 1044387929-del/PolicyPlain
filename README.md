@@ -21,12 +21,14 @@
 cd policy-backend
 python -m venv .venv
 .\.venv\Scripts\activate
-pip install -r requirements.txt
+uv sync
+# 或：pip install -r requirements.txt
 copy .env.example .env
 # 在 .env 中配置本地 PG（DB_* 或 DATABASE_URL），并先 CREATE DATABASE
-# 执行迁移建表：python -m alembic upgrade head（或 policy-backend/scripts 下 init 脚本）
+# 启动本地 Redis（默认 127.0.0.1:6379，与 hr-backend 一致）
+# 执行迁移：uv run python -m alembic upgrade head（或 policy-backend/scripts 下 init 脚本）
 # 可选：填写 OPENAI_API_KEY / OPENAI_BASE_URL / OPENAI_MODEL
-python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
+uv run uvicorn main:app --reload --host 127.0.0.1 --port 8000
 ```
 
 - API 文档：[http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)

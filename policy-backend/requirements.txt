@@ -1,13 +1,20 @@
-fastapi>=0.115.0
-uvicorn[standard]>=0.32.0
-sqlalchemy[asyncio]>=2.0.36
+# 与 pyproject.toml 对齐（与 hr-backend 重叠依赖的版本一致）；推荐用 uv：
+#   uv sync
+# 若仍用 pip：pip install -r requirements.txt
+aiosmtplib==5.0.0
+alembic==1.17.2
 asyncpg>=0.30.0
-pydantic-settings>=2.6.0
-email-validator>=2.0.0
-python-dotenv>=1.0.0
-pyjwt>=2.9.0
-pwdlib[argon2]>=0.2.0
-httpx>=0.27.0
+email-validator==2.3.0
+fastapi==0.124.2
+fastapi-mail==1.6.0
+httpx==0.28.1
 openai>=1.55.0
-python-multipart>=0.0.12
-alembic>=1.14.0
+pwdlib[argon2]==0.3.0
+pydantic==2.12.5
+pydantic-settings==2.12.0
+pyjwt==2.10.1
+python-dotenv==1.2.1
+python-multipart==0.0.20
+redis==7.1.0
+sqlalchemy[asyncio]==2.0.45
+uvicorn[standard]==0.38.0

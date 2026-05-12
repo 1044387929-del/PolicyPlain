@@ -35,5 +35,4 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
 auth_handler = AuthHandler()
 
 
-from . import register_email_code as _register_code_models
 from . import user as _user_models
