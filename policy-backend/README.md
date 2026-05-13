@@ -56,3 +56,11 @@ uv run uvicorn main:app --reload --host 127.0.0.1 --port 8000
 - 未配置任一密钥时，`/policy/explain` 仍走流式通道，内容为 **演示用 mock JSON** 分片，便于无密钥验收。
 - **`POST /api/v1/policy/explain`** 响应为 **`text/event-stream`（SSE）**：每行 `data: {...}`，`event` 为 `partial`（流式过程中可校验的结构化片段，字段在 `data` 内）、`done`（含 `record_id` 与完整结果）、`error`（`detail`）。服务端在收齐合法 JSON 并校验通过后写入数据库再发送 `done`。
 - 若百炼返回 **401 / invalid_api_key**：在控制台重新创建 API-KEY，确认未过期、复制完整；不要在 `KEY = value` 的等号两侧加空格（部分编辑器会误配）。
+
+## 政策截图 OCR（PaddleOCR 云端，对齐 hr-backend）
+
+与 **`hr-backend/core/ocr.py`** 相同：使用飞桨 **AI Studio** 的 **`PADDLE_OCR_ACCESS_TOKEN`** 访问 `paddleocr.aistudio-app.com` 的 OCR Jobs API（默认模型 **`PaddleOCR-VL-1.5`**）。
+
+- 配置 **`PADDLE_OCR_ACCESS_TOKEN`**（见 `.env.example`）；可选 **`PADDLE_OCR_JOB_URL`**、**`PADDLE_OCR_MODEL_NAME`**。
+- **`POST /api/v1/policy/ocr-image`**：`multipart/form-data` 字段 **`file`**（JPG / PNG / WebP，≤ 8MB），需 **Bearer** 登录；成功返回 **`{ "text": "..." }`**。
+- 未配置 Token 时返回 **503**；识别失败返回 **502**。

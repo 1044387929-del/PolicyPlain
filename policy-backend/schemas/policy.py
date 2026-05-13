@@ -14,6 +14,12 @@ class ExplainFromUrlRequest(BaseModel):
     topic: str | None = Field(default="general")
 
 
+class PolicyOcrImageResponse(BaseModel):
+    """上传政策类截图，经 PaddleOCR 识别后的纯文本（供用户粘贴区继续编辑）。"""
+
+    text: str = Field(default="", description="识别出的正文，多段以空行拼接")
+
+
 class ExplainResultFields(BaseModel):
     summary_one_line: str = ""
     applicability: list[str] = Field(default_factory=list)

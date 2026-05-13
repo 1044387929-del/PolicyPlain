@@ -4,7 +4,7 @@
       <p class="explain-hero-kicker">面向老年人与家属 · 字号大 · 步骤清晰</p>
       <h1 class="explain-hero-title">把政策条文，说成听得懂的家常话</h1>
       <p class="explain-hero-desc">
-        支持<strong>粘贴正文</strong>或<strong>政府公开网页链接</strong>；生成后可朗读收听。内容会保存在您的账号下便于回看。
+        支持<strong>粘贴正文</strong>、<strong>政府公开网页链接</strong>或<strong>上传截图识别</strong>；生成后可朗读收听。内容会保存在您的账号下便于回看。
       </p>
     </header>
 
@@ -39,7 +39,7 @@
         <span class="explain-step-num">2</span>
         <div>
           <h2 class="explain-step-title">提供政策内容</h2>
-          <p class="explain-step-hint">二选一：把文字贴进来，或填写官网上的政策页面地址。</p>
+          <p class="explain-step-hint">三选一：粘贴文字、填写政府公开页链接，或上传政策截图自动识别成文字。</p>
         </div>
       </div>
 
@@ -72,6 +72,23 @@
           class="explain-textarea"
         />
         <p class="explain-char-count">当前字数：{{ text.length }}</p>
+        <div class="explain-ocr-row">
+          <p class="explain-ocr-hint">
+            拍了纸质通知、电子版截图？点下面按钮上传 <strong>JPG / PNG / WebP</strong>（单张不超过 8MB），识别结果会写入上方正文框。需服务端配置与
+            <strong>hr-backend</strong> 相同的 <code>PADDLE_OCR_ACCESS_TOKEN</code>。
+          </p>
+          <el-upload
+            :show-file-list="false"
+            accept="image/jpeg,image/png,image/webp"
+            :disabled="ocrLoading"
+            :before-upload="beforeOcrUpload"
+            :http-request="runOcrUpload"
+          >
+            <el-button type="success" plain size="large" class="explain-ocr-btn" :loading="ocrLoading">
+              上传截图识别文字
+            </el-button>
+          </el-upload>
+        </div>
       </div>
 
       <div v-else class="explain-field-block">
@@ -147,12 +164,14 @@
 
 <script setup lang="ts">
 import { computed, ref, shallowRef } from 'vue'
+import type { UploadRawFile, UploadRequestOptions } from 'element-plus'
 import { ElMessage } from 'element-plus'
 import { Loading } from '@element-plus/icons-vue'
 import ExplainResultElder from '@/components/ExplainResultElder.vue'
 import {
   explainPolicyStream,
   explainPolicyStreamFromUrl,
+  ocrPolicyImage,
   type ExplainPartialPayload,
   type ExplainResponse,
 } from '@/apis/policy_api'
@@ -167,6 +186,8 @@ const loading = ref(false)
 const finalResult = shallowRef<ExplainResponse | null>(null)
 const streamingPreview = shallowRef<ExplainResponse | null>(null)
 const statusMessage = ref('')
+
+const ocrLoading = ref(false)
 
 const displayResult = computed(() => finalResult.value ?? streamingPreview.value)
 const drawerVisible = ref(false)
@@ -185,6 +206,44 @@ function onDrawerClosed() {
   statusMessage.value = ''
   finalResult.value = null
   streamingPreview.value = null
+}
+
+function beforeOcrUpload(file: UploadRawFile) {
+  const ok = file.type === 'image/jpeg' || file.type === 'image/png' || file.type === 'image/webp'
+  if (!ok) {
+    ElMessage.error('仅支持 JPG、PNG、WebP 图片')
+    return false
+  }
+  const max = 8 * 1024 * 1024
+  if (file.size > max) {
+    ElMessage.error('图片请勿超过 8MB')
+    return false
+  }
+  return true
+}
+
+async function runOcrUpload(options: UploadRequestOptions) {
+  ocrLoading.value = true
+  try {
+    const res = await ocrPolicyImage(options.file as File)
+    const t = res.text.trim()
+    if (!t) {
+      ElMessage.warning('未识别到文字，请换更清晰的政策截图重试')
+      options.onSuccess(res as never)
+      return
+    }
+    if (text.value.trim()) text.value = `${text.value.trim()}\n\n${t}`
+    else text.value = t
+    ElMessage.success('已填入正文框，可再编辑后点击「生成白话解读」')
+    options.onSuccess(res as never)
+  } catch (e: unknown) {
+    const ax = e as { response?: { data?: { detail?: string } } }
+    const d = ax.response?.data?.detail
+    ElMessage.error(typeof d === 'string' ? d : '识别失败，请稍后重试')
+    options.onError?.(e as Error)
+  } finally {
+    ocrLoading.value = false
+  }
 }
 
 async function onGenerate() {
@@ -434,6 +493,38 @@ async function onGenerate() {
   font-size: 1rem;
   line-height: 1.55;
   color: #57534e;
+}
+
+.explain-ocr-row {
+  margin-top: 1rem;
+  padding: 1rem 1.1rem;
+  border-radius: 0.85rem;
+  border: 1px dashed rgba(15, 118, 110, 0.45);
+  background: rgba(240, 253, 250, 0.65);
+}
+
+.explain-ocr-hint {
+  margin: 0 0 0.85rem;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #44403c;
+}
+
+.explain-ocr-hint code {
+  font-size: 0.92rem;
+  word-break: break-all;
+  color: #0f766e;
+}
+
+.explain-ocr-btn {
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .explain-ocr-btn {
+    width: auto;
+    min-width: 14rem;
+  }
 }
 
 .explain-textarea :deep(.el-textarea__inner) {

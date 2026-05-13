@@ -106,6 +106,18 @@ class Settings(BaseSettings):
         default=60, ge=15, le=600, validation_alias="REGISTER_CODE_RESEND_SECONDS"
     )
 
+    # PaddleOCR 云端（与 hr-backend 一致：https://paddleocr.aistudio-app.com/api/v2/ocr/jobs）
+    PADDLE_OCR_ACCESS_TOKEN: str = Field(default="", validation_alias="PADDLE_OCR_ACCESS_TOKEN")
+    PADDLE_OCR_JOB_URL: str = Field(
+        default="https://paddleocr.aistudio-app.com/api/v2/ocr/jobs",
+        validation_alias="PADDLE_OCR_JOB_URL",
+    )
+    PADDLE_OCR_MODEL_NAME: str = Field(default="PaddleOCR-VL-1.5", validation_alias="PADDLE_OCR_MODEL_NAME")
+
+    @property
+    def paddle_ocr_configured(self) -> bool:
+        return bool(self.PADDLE_OCR_ACCESS_TOKEN.strip())
+
     @property
     def llm_api_key(self) -> str:
         """调用兼容 OpenAI 接口时使用的密钥：显式百炼密钥优先，其次 OPENAI_API_KEY。"""

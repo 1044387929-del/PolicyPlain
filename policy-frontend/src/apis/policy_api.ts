@@ -28,6 +28,10 @@ export interface ExplainResponse {
 /** SSE `partial` 事件里 `data` 的形状（与 ExplainResponse 相同字段，无 record_id） */
 export type ExplainPartialPayload = Omit<ExplainResponse, 'record_id'>
 
+export interface PolicyOcrImageResponse {
+  text: string
+}
+
 export type ExplainStreamStatus = {
   stage?: string
   message?: string
@@ -180,4 +184,15 @@ export interface ExplanationDetailResponse {
 
 export function fetchExplanationDetail(id: string) {
   return request.get<ExplanationDetailResponse>(`/policy/explanations/${id}`)
+}
+
+/** 上传政策截图，PaddleOCR 识别文字（需后端 PADDLE_OCR_ACCESS_TOKEN） */
+export function ocrPolicyImage(file: File) {
+  const fd = new FormData()
+  fd.append('file', file)
+  return request.request<PolicyOcrImageResponse>({
+    method: 'POST',
+    url: '/policy/ocr-image',
+    data: fd,
+  })
 }

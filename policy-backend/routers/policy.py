@@ -1,16 +1,20 @@
 import json
+import logging
+import os
+import tempfile
 import uuid
 from collections.abc import AsyncIterator
 
 import httpx
 import json_repair
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import StreamingResponse
 from openai import APIError, AuthenticationError
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from dependencies import get_current_user, get_session_instance
+from core.ocr import PaddleOcr
 from models.user import PolicyExplanationModel, UserModel
 from repository.policy_repo import PolicyRepo
 from schemas.policy import (
@@ -21,6 +25,7 @@ from schemas.policy import (
     ExplanationListItem,
     ExplanationListResponse,
     ExplainResultFields,
+    PolicyOcrImageResponse,
 )
 from services.explain_llm import (
     extract_synopsis_from_web_plain,
@@ -34,7 +39,11 @@ from settings import settings
 
 router = APIRouter(prefix="/policy", tags=["policy"])
 
+logger = logging.getLogger(__name__)
+
 ALLOWED_TOPICS = frozenset({"general", "medical_insurance", "pension"})
+OCR_ALLOWED_IMAGE_TYPES = frozenset({"image/jpeg", "image/png", "image/webp"})
+OCR_MAX_BYTES = 8 * 1024 * 1024
 
 
 async def _stream_explain_and_save(
@@ -236,6 +245,57 @@ async def explain_from_url(
         media_type="text/event-stream; charset=utf-8",
         headers=_sse_headers(),
     )
+
+
+@router.post("/ocr-image", response_model=PolicyOcrImageResponse)
+async def ocr_policy_screenshot(
+    file: UploadFile = File(...),
+    current: UserModel = Depends(get_current_user),
+):
+    """上传政策类截图，调用与 hr-backend 相同的 PaddleOCR 云端配置识别文字，填入前端正文框。"""
+    _ = current
+    if not settings.paddle_ocr_configured:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="未配置 Paddle OCR：请设置环境变量 PADDLE_OCR_ACCESS_TOKEN（与 hr-backend 一致，见 .env.example）",
+        )
+    ct = (file.content_type or "").split(";")[0].strip().lower()
+    if ct not in OCR_ALLOWED_IMAGE_TYPES:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="仅支持 JPG、PNG、WebP 图片")
+
+    if ct == "image/jpeg":
+        suffix = ".jpg"
+    elif ct == "image/png":
+        suffix = ".png"
+    else:
+        suffix = ".webp"
+
+    raw = await file.read(OCR_MAX_BYTES + 1)
+    if len(raw) > OCR_MAX_BYTES:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="图片过大（单张上限 8MB）")
+
+    fd, path = tempfile.mkstemp(suffix=suffix)
+    os.close(fd)
+    text = ""
+    try:
+        with open(path, "wb") as fp:
+            fp.write(raw)
+        paddle = PaddleOcr()
+        text = await paddle.extract_text_from_file(path)
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, detail=str(e)) from e
+    except Exception as e:
+        logger.exception("PaddleOCR 识别异常")
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, detail=f"识别失败：{e!s}") from e
+    finally:
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+
+    return PolicyOcrImageResponse(text=text)
 
 
 @router.get("/explanations", response_model=ExplanationListResponse)
