@@ -46,17 +46,23 @@ npm run dev
 
 ## 演示路径
 
-1. 打开前端 → **注册** → **登录**
-2. 在「解读」页粘贴一段政策样例 → **生成白话解读**
-3. 打开 **历史** → 查看单条详情（含原文与结构化 JSON）
+1. 打开前端 → **邮箱收验证码** → **注册** → **登录**（需本地 **Redis**；邮件发码见 `policy-backend/README.md`）
+2. 在「白话解读」页：**粘贴正文**或切换到 **输入网址**（公网政策页）→ **生成白话解读**
+3. 生成过程中后端以 **SSE** 推送 `partial`（可解析的结构化片段），前端**渐进展示**；结束后写入 **历史**
+4. 右下角 **「看字大小」**：可**全局放大字号**（标准 / 大字 / 特大），支持**收起**为浮钮；设置保存在浏览器 `localStorage`
+5. 打开 **历史记录** → 查看单条详情（含保存的原文摘录/要点与结构化结果）
+
+**外网演示（可选）**：`ngrok http 8080` 穿透前端时，已在 `policy-frontend/vite.config.ts` 中配置 `server.allowedHosts` 以允许 `*.ngrok-free.dev` 等域名；若 API 仍指向本机，需在 `.env` 中为穿透环境单独配置 `VITE_API_BASE_URL` 并处理后端的 **CORS**。
 
 ## 环境变量（后端）
 
-见 `policy-backend/.env.example`。
+见 `policy-backend/.env.example` 与 `policy-backend/README.md`（含 **Redis**、**邮件验证码**、**LLM / 百炼** 说明）。
 
 ## 文档索引
 
 - `docs/项目需求分析.md`
-- `docs/项目概要设计.md`（若与已实现接口有出入，以 `policy-backend` 与 `/docs` OpenAPI 为准）
+- `docs/项目概要设计.md`（与代码不一致时，以 `policy-backend` OpenAPI `/docs` 与源码为准）
+- `docs/项目实施流程与顺序.md`
 - `docs/技术实施步骤.md`
+- `policy-backend/README.md`（数据库、Redis、邮件注册、LLM 与 SSE 说明）
 
