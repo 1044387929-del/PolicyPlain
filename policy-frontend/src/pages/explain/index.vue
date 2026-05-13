@@ -1,6 +1,6 @@
 <template>
   <div class="explain-page">
-    <div class="explain-top-strip">
+    <div class="explain-top-strip explain-top-strip--elevated">
       <div class="explain-top-strip-inner">
         <span class="explain-topic-label">解读主题</span>
         <el-radio-group v-model="topic" size="large" class="explain-radio-row explain-radio-row--top">
@@ -12,15 +12,15 @@
       </div>
     </div>
 
-    <header class="explain-lead">
-      <h1 class="explain-lead-title">白话解读与追问</h1>
-      <p class="explain-lead-desc">
-        下方<strong>大输入区</strong>粘贴政策材料并生成；宽屏时点击右侧「解读」可<strong>展开或收起</strong>结果与对话栏。手机端仍在侧滑抽屉中查看。
-      </p>
-    </header>
-
     <div class="explain-workbench">
       <div class="explain-input-workspace">
+        <header class="explain-lead explain-lead--compact">
+          <h1 class="explain-lead-title">白话解读与追问</h1>
+          <p class="explain-lead-desc">
+            先选主题，再于下方填写材料；宽屏右侧可<strong>展开/收起</strong>解读与对话栏。手机端用侧滑抽屉查看结果。
+          </p>
+        </header>
+
         <section class="explain-card explain-card--notice">
           <el-alert type="warning" show-icon :closable="false" class="explain-alert">
             <template #title>
@@ -411,6 +411,7 @@ async function onGenerate() {
   max-width: 52rem;
   margin-left: auto;
   margin-right: auto;
+  padding-top: 0.15rem;
 }
 
 @media (min-width: 768px) {
@@ -471,13 +472,35 @@ async function onGenerate() {
   }
 }
 
+.explain-top-strip--elevated {
+  margin-top: -0.15rem;
+  margin-bottom: 0.65rem;
+  padding-top: 0.65rem;
+  padding-bottom: 0.65rem;
+  border-radius: 0 0 1rem 1rem;
+  z-index: 6;
+}
+
 .explain-lead {
-  margin-bottom: 1.25rem;
-  padding: 1rem 1.15rem 1.15rem;
   border-radius: 1rem;
   border: 1px solid rgba(120, 113, 108, 0.14);
   background: rgba(255, 255, 255, 0.75);
   box-shadow: 0 1px 10px rgba(28, 25, 23, 0.04);
+}
+
+.explain-lead--compact {
+  margin-bottom: 1rem;
+  padding: 0.65rem 0.95rem 0.75rem;
+}
+
+.explain-lead--compact .explain-lead-title {
+  font-size: clamp(1.2rem, 2.6vw, 1.45rem);
+  margin-bottom: 0.3rem;
+}
+
+.explain-lead--compact .explain-lead-desc {
+  font-size: 0.95rem;
+  line-height: 1.45;
 }
 
 .explain-lead-title {
