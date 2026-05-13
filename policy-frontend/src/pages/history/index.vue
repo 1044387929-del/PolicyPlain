@@ -1,6 +1,11 @@
 <template>
   <div class="history-page">
-    <header class="history-hero">
+    <header
+      class="history-hero"
+      :style="{
+        backgroundImage: `linear-gradient(115deg, rgba(255,251,235,0.92) 0%, rgba(240,253,250,0.88) 42%, rgba(255,255,255,0.75) 100%), url(${IMG_HISTORY_STRIP})`,
+      }"
+    >
       <h1 class="history-title">我的解读记录</h1>
       <p class="history-desc">按时间查看您曾保存的白话解读，点「查看」可回看全文与原文。</p>
     </header>
@@ -36,6 +41,7 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { fetchExplanations, type ExplanationListItem } from '@/apis/policy_api'
+import { IMG_HISTORY_STRIP } from '@/constants/elderImagery'
 
 const router = useRouter()
 
@@ -77,7 +83,8 @@ function goDetail(id: string) {
   padding: 1.5rem 1.35rem;
   border-radius: 1.15rem;
   border: 1px solid rgba(15, 118, 110, 0.15);
-  background: linear-gradient(120deg, rgba(255, 255, 255, 0.95), rgba(240, 253, 250, 0.85));
+  background-size: cover;
+  background-position: center 40%;
   box-shadow: 0 2px 16px rgba(15, 118, 110, 0.06);
 }
 

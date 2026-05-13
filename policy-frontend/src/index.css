@@ -62,6 +62,8 @@ body {
   -webkit-font-smoothing: antialiased;
   background-color: var(--pp-bg-mid);
   background-image:
+    radial-gradient(ellipse 90% 60% at 100% 0%, rgba(253, 230, 138, 0.22), transparent 50%),
+    radial-gradient(ellipse 70% 50% at 0% 100%, rgba(45, 212, 191, 0.12), transparent 45%),
     radial-gradient(ellipse 120% 80% at 50% -20%, rgba(255, 255, 255, 0.9), transparent),
     linear-gradient(165deg, var(--pp-bg-top) 0%, var(--pp-bg-mid) 45%, var(--pp-bg-bottom) 100%);
   background-attachment: fixed;

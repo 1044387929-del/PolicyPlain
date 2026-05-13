@@ -2,13 +2,21 @@
   <div class="explain-page">
     <div class="explain-shell">
       <div class="explain-shell-left">
-        <header class="explain-hero">
-      <p class="explain-hero-kicker">面向老年人与家属 · 字号大 · 步骤清晰</p>
-      <h1 class="explain-hero-title">把政策条文，说成听得懂的家常话</h1>
-      <p class="explain-hero-desc">
-        支持<strong>粘贴正文</strong>、<strong>网页链接</strong>与<strong>截图识别</strong>在同一页组合使用；生成后可朗读收听。内容会保存在您的账号下便于回看。
-      </p>
-    </header>
+        <header class="explain-hero explain-hero--split">
+          <div class="explain-hero-text">
+            <p class="explain-hero-kicker">面向老年人与家属 · 字号大 · 步骤清晰</p>
+            <h1 class="explain-hero-title">把政策条文，说成听得懂的家常话</h1>
+            <p class="explain-hero-desc">
+              支持<strong>粘贴正文</strong>、<strong>网页链接</strong>与<strong>截图识别</strong>在同一页组合使用；生成后可朗读收听。内容会保存在您的账号下便于回看。
+            </p>
+          </div>
+          <div
+            class="explain-hero-visual"
+            role="img"
+            :aria-label="'配图：乐龄生活氛围'"
+            :style="{ backgroundImage: `url(${IMG_EXPLAIN_HERO})` }"
+          />
+        </header>
 
     <section class="explain-card explain-card--notice">
       <el-alert type="warning" show-icon :closable="false" class="explain-alert">
@@ -215,6 +223,7 @@ import {
   type ExplainPartialPayload,
   type ExplainResponse,
 } from '@/apis/policy_api'
+import { IMG_EXPLAIN_HERO } from '@/constants/elderImagery'
 
 const STREAMING_RECORD_ID = '__streaming__'
 
@@ -474,6 +483,61 @@ async function onGenerate() {
   border: 1px solid rgba(15, 118, 110, 0.2);
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 253, 250, 0.9) 50%, rgba(255, 251, 235, 0.5) 100%);
   box-shadow: 0 4px 24px rgba(15, 118, 110, 0.08);
+}
+
+.explain-hero--split {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  overflow: hidden;
+  padding-bottom: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .explain-hero--split {
+    flex-direction: row;
+    align-items: stretch;
+    gap: 0;
+    padding: 0;
+    min-height: 12.5rem;
+  }
+}
+
+.explain-hero-text {
+  flex: 1;
+  min-width: 0;
+  padding: 1.75rem 1.5rem 0;
+}
+
+@media (min-width: 768px) {
+  .explain-hero-text {
+    padding: 1.85rem 1.75rem 1.85rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+}
+
+.explain-hero-visual {
+  flex-shrink: 0;
+  width: 100%;
+  min-height: 11rem;
+  border-radius: 0 0 1rem 1rem;
+  background-size: cover;
+  background-position: center 35%;
+  border-top: 1px solid rgba(15, 118, 110, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+@media (min-width: 768px) {
+  .explain-hero-visual {
+    width: min(38%, 20rem);
+    min-height: auto;
+    border-radius: 0 1.2rem 1.2rem 0;
+    border-top: none;
+    border-left: 1px solid rgba(15, 118, 110, 0.15);
+    box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.4);
+  }
 }
 
 .explain-hero-kicker {

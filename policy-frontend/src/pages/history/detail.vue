@@ -4,7 +4,12 @@
       ← 返回列表
     </el-button>
     <div v-if="detail" class="detail-inner">
-      <header class="detail-hero">
+      <header
+        class="detail-hero"
+        :style="{
+          backgroundImage: `linear-gradient(120deg, rgba(255,255,255,0.94) 0%, rgba(240,253,250,0.82) 50%, rgba(255,251,235,0.7) 100%), url(${IMG_HISTORY_STRIP})`,
+        }"
+      >
         <h1 class="detail-title">解读详情</h1>
         <p class="detail-desc">以下为本次保存的摘要信息与白话解读结果。</p>
       </header>
@@ -43,6 +48,7 @@ import {
   type ExplainResponse,
   type ExplanationDetailResponse,
 } from '@/apis/policy_api'
+import { IMG_HISTORY_STRIP } from '@/constants/elderImagery'
 
 const route = useRoute()
 const loading = ref(false)
@@ -96,7 +102,8 @@ onMounted(async () => {
   padding: 1.35rem 1.25rem;
   border-radius: 1.1rem;
   border: 1px solid rgba(15, 118, 110, 0.15);
-  background: linear-gradient(120deg, rgba(255, 255, 255, 0.95), rgba(240, 253, 250, 0.85));
+  background-size: cover;
+  background-position: center 45%;
   box-shadow: 0 2px 14px rgba(15, 118, 110, 0.06);
 }
 
