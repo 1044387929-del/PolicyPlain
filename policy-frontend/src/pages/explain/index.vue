@@ -1,119 +1,31 @@
 <template>
   <div class="explain-page">
-    <div class="explain-shell">
-      <div class="explain-shell-left">
-        <header class="explain-hero explain-hero--split">
-          <div class="explain-hero-text">
-            <p class="explain-hero-kicker">面向老年人与家属 · 字号大 · 步骤清晰</p>
-            <h1 class="explain-hero-title">把政策条文，说成听得懂的家常话</h1>
-            <p class="explain-hero-desc">
-              支持<strong>粘贴正文</strong>、<strong>网页链接</strong>与<strong>截图识别</strong>在同一页组合使用；生成后可朗读收听。内容会保存在您的账号下便于回看。
-            </p>
-          </div>
-          <div
-            class="explain-hero-visual"
-            role="img"
-            :aria-label="'配图：乐龄生活氛围'"
-            :style="{ backgroundImage: `url(${IMG_EXPLAIN_HERO})` }"
-          />
-        </header>
-
-    <section class="explain-card explain-card--notice">
-      <el-alert type="warning" show-icon :closable="false" class="explain-alert">
-        <template #title>
-          <span class="explain-alert-title">重要说明</span>
-        </template>
-        本工具仅供阅读辅助，不构成法律或行政意见。待遇与规则以当地最新政策及经办答复为准。
-      </el-alert>
-    </section>
-
-    <section class="explain-card">
-      <div class="explain-step-head">
-        <span class="explain-step-num">1</span>
-        <div>
-          <h2 class="explain-step-title">选择解读主题</h2>
-          <p class="explain-step-hint">按您关心的领域选一项即可，不确定可选「社保综合」。</p>
-        </div>
-      </div>
-      <div class="explain-form-item-plain">
-        <el-radio-group v-model="topic" size="large" class="explain-radio-row">
+    <div class="explain-top-strip">
+      <div class="explain-top-strip-inner">
+        <span class="explain-topic-label">解读主题</span>
+        <el-radio-group v-model="topic" size="large" class="explain-radio-row explain-radio-row--top">
           <el-radio-button value="general">社保综合</el-radio-button>
           <el-radio-button value="medical_insurance">医保</el-radio-button>
           <el-radio-button value="pension">养老保险</el-radio-button>
         </el-radio-group>
+        <span class="explain-topic-hint">按关心领域选一项；不确定请选「社保综合」</span>
       </div>
-    </section>
+    </div>
 
-    <section class="explain-card">
-      <div class="explain-step-head">
-        <span class="explain-step-num">2</span>
-        <div>
-          <h2 class="explain-step-title">提供政策内容</h2>
-          <p class="explain-step-hint">
-            可在<strong>同一页</strong>里组合使用：粘贴文字、填写政府公开页链接、上传截图识别；至少提供其中一种。若同时填写链接与正文，会先抓网页提炼要点，再与您粘贴的内容<strong>合并</strong>后解读。
-          </p>
-        </div>
-      </div>
+    <header class="explain-lead">
+      <h1 class="explain-lead-title">白话解读与追问</h1>
+      <p class="explain-lead-desc">
+        页面主体展示<strong>生成结果</strong>与<strong>追问对话</strong>。右侧填写政策材料后点「生成」；手机端结果在侧滑抽屉中打开。
+      </p>
+    </header>
 
-      <div class="explain-field-block">
-        <label class="explain-field-label">政策原文（粘贴，或由下方「上传截图」识别后填入）</label>
-        <el-input
-          v-model="text"
-          type="textarea"
-          :rows="10"
-          placeholder="把通知、办事指南或政策条文粘贴到此处；也可先上传截图，识别结果会出现在这里…"
-          class="explain-textarea"
-        />
-        <p class="explain-char-count">当前字数：{{ text.length }}</p>
-      </div>
-
-      <div class="explain-field-block explain-field-block--spaced">
-        <label class="explain-field-label">政策网页链接（选填，可与上文同时使用）</label>
-        <el-input
-          v-model="pageUrl"
-          type="url"
-          size="large"
-          clearable
-          placeholder="例如：https://www.gov.cn/… 政府或人社部门公开页面"
-          class="explain-url-input"
-        />
-        <p class="explain-field-help">
-          填写后系统会抓取该页正文并提炼要点；若您同时粘贴了文字，会把<strong>网页要点 + 您的粘贴</strong>一起交给模型解读。仅支持公网 http/https。
-        </p>
-      </div>
-
-      <div class="explain-ocr-row">
-        <p class="explain-ocr-hint">
-          拍了纸质通知、电子版截图？上传 <strong>JPG / PNG / WebP</strong>（单张不超过 8MB），识别文字会<strong>追加到上方原文框</strong>。需服务端配置
-          <code>PADDLE_OCR_ACCESS_TOKEN</code>（与 hr-backend 相同）。
-        </p>
-        <el-upload
-          :show-file-list="false"
-          accept="image/jpeg,image/png,image/webp"
-          :disabled="ocrLoading"
-          :before-upload="beforeOcrUpload"
-          :http-request="runOcrUpload"
-        >
-          <el-button type="success" plain size="large" class="explain-ocr-btn" :loading="ocrLoading">
-            上传截图识别文字
-          </el-button>
-        </el-upload>
-      </div>
-    </section>
-
-    <section class="explain-cta-wrap">
-      <el-button type="primary" size="large" class="explain-cta-btn" :loading="loading" @click="onGenerate">
-        生成白话解读
-      </el-button>
-    </section>
-      </div>
-
-      <aside class="explain-preview-aside" aria-label="解读预览">
-        <div class="explain-preview-sticky">
+    <div class="explain-shell">
+      <section class="explain-main-stage" aria-label="白话解读与追问">
+        <div class="explain-main-sticky">
           <div v-if="!inlinePreviewActive" class="explain-preview-empty">
-            <p class="explain-preview-empty-title">白话预览</p>
+            <p class="explain-preview-empty-title">在此查看解读与对话</p>
             <p class="explain-preview-empty-desc">
-              在左侧填好主题与材料后点击「生成白话解读」，生成过程与结果会出现在此栏（宽屏固定跟随，便于对照原文）。
+              宽屏下此处占据主要区域：生成中的进度、结构化白话、朗读与追问都会显示在这里。请先在<strong>右侧</strong>粘贴正文、填写链接或上传截图，再点「生成白话解读」。
             </p>
           </div>
           <div v-else class="explain-preview-pane">
@@ -152,7 +64,81 @@
             </div>
           </div>
         </div>
-      </aside>
+      </section>
+
+      <div class="explain-input-column">
+        <section class="explain-card explain-card--notice">
+          <el-alert type="warning" show-icon :closable="false" class="explain-alert">
+            <template #title>
+              <span class="explain-alert-title">重要说明</span>
+            </template>
+            本工具仅供阅读辅助，不构成法律或行政意见。待遇与规则以当地最新政策及经办答复为准。
+          </el-alert>
+        </section>
+
+        <section class="explain-card">
+          <div class="explain-step-head">
+            <span class="explain-step-num">1</span>
+            <div>
+              <h2 class="explain-step-title">提供政策内容</h2>
+              <p class="explain-step-hint">
+                可组合使用：粘贴文字、填写政府公开页链接、上传截图识别；至少一种。若同时有链接与正文，会先抓网页要点再<strong>合并</strong>后解读。
+              </p>
+            </div>
+          </div>
+
+          <div class="explain-field-block">
+            <label class="explain-field-label">政策原文（粘贴，或由「上传截图」识别后填入）</label>
+            <el-input
+              v-model="text"
+              type="textarea"
+              :rows="8"
+              placeholder="把通知、办事指南或政策条文粘贴到此处；也可先上传截图，识别结果会出现在这里…"
+              class="explain-textarea"
+            />
+            <p class="explain-char-count">当前字数：{{ text.length }}</p>
+          </div>
+
+          <div class="explain-field-block explain-field-block--spaced">
+            <label class="explain-field-label">政策网页链接（选填）</label>
+            <el-input
+              v-model="pageUrl"
+              type="url"
+              size="large"
+              clearable
+              placeholder="例如：https://www.gov.cn/… 政府或人社部门公开页面"
+              class="explain-url-input"
+            />
+            <p class="explain-field-help">
+              填写后会抓取该页正文并提炼要点；若同时有粘贴文字，会把<strong>网页要点 + 您的粘贴</strong>一起解读。仅支持公网 http/https。
+            </p>
+          </div>
+
+          <div class="explain-ocr-row">
+            <p class="explain-ocr-hint">
+              拍了纸质通知、电子版截图？上传 <strong>JPG / PNG / WebP</strong>（单张不超过 8MB），识别文字会<strong>追加到上方原文框</strong>。需服务端配置
+              <code>PADDLE_OCR_ACCESS_TOKEN</code>（与 hr-backend 相同）。
+            </p>
+            <el-upload
+              :show-file-list="false"
+              accept="image/jpeg,image/png,image/webp"
+              :disabled="ocrLoading"
+              :before-upload="beforeOcrUpload"
+              :http-request="runOcrUpload"
+            >
+              <el-button type="success" plain size="large" class="explain-ocr-btn" :loading="ocrLoading">
+                上传截图识别文字
+              </el-button>
+            </el-upload>
+          </div>
+        </section>
+
+        <section class="explain-cta-wrap explain-cta-wrap--sidebar">
+          <el-button type="primary" size="large" class="explain-cta-btn" :loading="loading" @click="onGenerate">
+            生成白话解读
+          </el-button>
+        </section>
+      </div>
     </div>
 
     <el-drawer
@@ -223,7 +209,6 @@ import {
   type ExplainPartialPayload,
   type ExplainResponse,
 } from '@/apis/policy_api'
-import { IMG_EXPLAIN_HERO } from '@/constants/elderImagery'
 
 const STREAMING_RECORD_ID = '__streaming__'
 
@@ -400,45 +385,135 @@ async function onGenerate() {
 
 @media (min-width: 768px) {
   .explain-page {
-    max-width: min(90rem, 100%);
+    max-width: min(96rem, 100%);
     padding-left: 0.25rem;
     padding-right: 0.25rem;
   }
 }
 
+.explain-top-strip {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(15, 118, 110, 0.22);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.97) 0%, rgba(240, 253, 250, 0.9) 100%);
+  box-shadow: 0 2px 14px rgba(15, 118, 110, 0.08);
+  backdrop-filter: blur(10px);
+}
+
+.explain-top-strip-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+@media (min-width: 640px) {
+  .explain-top-strip-inner {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.65rem 1rem;
+  }
+}
+
+.explain-topic-label {
+  flex-shrink: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f766e;
+  letter-spacing: 0.04em;
+}
+
+.explain-topic-hint {
+  flex: 1 1 auto;
+  min-width: 8rem;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: #57534e;
+}
+
+@media (min-width: 640px) {
+  .explain-topic-hint {
+    text-align: right;
+  }
+}
+
+.explain-lead {
+  margin-bottom: 1.25rem;
+  padding: 1rem 1.15rem 1.15rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(120, 113, 108, 0.14);
+  background: rgba(255, 255, 255, 0.75);
+  box-shadow: 0 1px 10px rgba(28, 25, 23, 0.04);
+}
+
+.explain-lead-title {
+  margin: 0 0 0.4rem;
+  font-size: clamp(1.35rem, 3vw, 1.65rem);
+  font-weight: 800;
+  line-height: 1.25;
+  color: #0c0a09;
+}
+
+.explain-lead-desc {
+  margin: 0;
+  font-size: 1.02rem;
+  line-height: 1.55;
+  color: #44403c;
+}
+
+.explain-lead-desc strong {
+  color: #0f766e;
+  font-weight: 700;
+}
+
 .explain-shell {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
 }
 
 @media (min-width: 768px) {
   .explain-shell {
-    display: flex;
-    gap: 2rem;
+    flex-direction: row;
     align-items: flex-start;
+    gap: 1.35rem;
   }
 }
 
-.explain-shell-left {
-  flex: 1;
+.explain-main-stage {
+  display: none;
   min-width: 0;
 }
 
-.explain-preview-aside {
-  display: none;
-}
-
 @media (min-width: 768px) {
-  .explain-preview-aside {
+  .explain-main-stage {
     display: block;
-    flex: 0 0 min(40%, 26rem);
-    max-width: 28rem;
+    flex: 1 1 0;
+    order: -1;
+    min-height: min(70vh, 36rem);
   }
 }
 
-.explain-preview-sticky {
+.explain-input-column {
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+@media (min-width: 768px) {
+  .explain-input-column {
+    flex: 0 0 min(22rem, 32vw);
+    max-width: 26rem;
+  }
+}
+
+.explain-main-sticky {
   position: sticky;
   top: 5.5rem;
-  max-height: calc(100vh - 6.5rem);
+  max-height: calc(100vh - 6.25rem);
   overflow: auto;
   padding-bottom: 0.5rem;
 }
@@ -446,21 +521,25 @@ async function onGenerate() {
 .explain-preview-empty {
   border: 1px dashed rgba(15, 118, 110, 0.35);
   border-radius: 1rem;
-  padding: 1.35rem 1.2rem 1.45rem;
-  background: linear-gradient(180deg, rgba(250, 250, 249, 0.95) 0%, rgba(240, 253, 250, 0.35) 100%);
+  padding: 1.5rem 1.25rem 1.65rem;
+  min-height: min(48vh, 26rem);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: linear-gradient(180deg, rgba(250, 250, 249, 0.98) 0%, rgba(240, 253, 250, 0.45) 100%);
 }
 
 .explain-preview-empty-title {
-  margin: 0 0 0.5rem;
-  font-size: 1.2rem;
+  margin: 0 0 0.55rem;
+  font-size: 1.35rem;
   font-weight: 800;
   color: #0f766e;
 }
 
 .explain-preview-empty-desc {
   margin: 0;
-  font-size: 1.02rem;
-  line-height: 1.6;
+  font-size: 1.05rem;
+  line-height: 1.65;
   color: #57534e;
 }
 
@@ -476,101 +555,18 @@ async function onGenerate() {
   padding: 1rem 1.15rem 1.25rem;
 }
 
-.explain-hero {
-  margin-bottom: 2rem;
-  padding: 1.75rem 1.5rem 2rem;
-  border-radius: 1.25rem;
-  border: 1px solid rgba(15, 118, 110, 0.2);
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 253, 250, 0.9) 50%, rgba(255, 251, 235, 0.5) 100%);
-  box-shadow: 0 4px 24px rgba(15, 118, 110, 0.08);
+.explain-radio-row--top {
+  flex: 1 1 auto;
 }
 
-.explain-hero--split {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-  overflow: hidden;
-  padding-bottom: 1.5rem;
-}
-
-@media (min-width: 768px) {
-  .explain-hero--split {
-    flex-direction: row;
-    align-items: stretch;
-    gap: 0;
-    padding: 0;
-    min-height: 12.5rem;
-  }
-}
-
-.explain-hero-text {
-  flex: 1;
-  min-width: 0;
-  padding: 1.75rem 1.5rem 0;
-}
-
-@media (min-width: 768px) {
-  .explain-hero-text {
-    padding: 1.85rem 1.75rem 1.85rem;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-  }
-}
-
-.explain-hero-visual {
-  flex-shrink: 0;
-  width: 100%;
-  min-height: 11rem;
-  border-radius: 0 0 1rem 1rem;
-  background-size: cover;
-  background-position: center 35%;
-  border-top: 1px solid rgba(15, 118, 110, 0.12);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
-}
-
-@media (min-width: 768px) {
-  .explain-hero-visual {
-    width: min(38%, 20rem);
-    min-height: auto;
-    border-radius: 0 1.2rem 1.2rem 0;
-    border-top: none;
-    border-left: 1px solid rgba(15, 118, 110, 0.15);
-    box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.4);
-  }
-}
-
-.explain-hero-kicker {
-  margin: 0 0 0.5rem;
-  font-size: 1rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: #0f766e;
-}
-
-.explain-hero-title {
-  margin: 0 0 0.75rem;
-  font-size: clamp(1.5rem, 4vw, 1.95rem);
-  font-weight: 800;
-  line-height: 1.3;
-  color: #0c0a09;
-}
-
-.explain-hero-desc {
-  margin: 0;
-  font-size: 1.1rem;
-  line-height: 1.65;
-  color: #44403c;
-}
-
-.explain-hero-desc strong {
-  color: #0f766e;
-  font-weight: 700;
+.explain-radio-row--top :deep(.el-radio-button__inner) {
+  font-size: 1.05rem;
+  padding: 0.6rem 1rem;
 }
 
 .explain-card {
-  margin-bottom: 1.5rem;
-  padding: 1.5rem 1.35rem 1.6rem;
+  margin-bottom: 1.25rem;
+  padding: 1.35rem 1.2rem 1.45rem;
   border-radius: 1.15rem;
   border: 1px solid var(--pp-card-border, rgba(120, 113, 108, 0.18));
   background: var(--pp-card, #fff);
@@ -579,33 +575,33 @@ async function onGenerate() {
 
 @media (min-width: 640px) {
   .explain-card {
-    padding: 1.75rem 1.75rem 1.85rem;
+    padding: 1.5rem 1.5rem 1.6rem;
   }
 }
 
 .explain-card--notice {
-  padding: 1rem 1.25rem;
+  padding: 0.85rem 1rem;
   background: linear-gradient(180deg, #fffbeb 0%, #fff 100%);
   border-color: rgba(245, 158, 11, 0.35);
 }
 
 .explain-alert :deep(.el-alert__title) {
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   font-weight: 700;
 }
 
 .explain-alert :deep(.el-alert__description) {
-  margin-top: 0.35rem;
-  font-size: 1.05rem;
-  line-height: 1.6;
+  margin-top: 0.3rem;
+  font-size: 0.98rem;
+  line-height: 1.55;
   color: #44403c;
 }
 
 .explain-step-head {
   display: flex;
-  gap: 1rem;
+  gap: 0.85rem;
   align-items: flex-start;
-  margin-bottom: 1.25rem;
+  margin-bottom: 1.1rem;
 }
 
 .explain-step-num {
@@ -613,10 +609,10 @@ async function onGenerate() {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 0.75rem;
-  font-size: 1.25rem;
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 0.7rem;
+  font-size: 1.15rem;
   font-weight: 800;
   color: #fff;
   background: linear-gradient(145deg, #0d9488, #0f766e);
@@ -624,25 +620,17 @@ async function onGenerate() {
 }
 
 .explain-step-title {
-  margin: 0 0 0.35rem;
-  font-size: 1.35rem;
+  margin: 0 0 0.3rem;
+  font-size: 1.2rem;
   font-weight: 800;
   color: #0c0a09;
 }
 
 .explain-step-hint {
   margin: 0;
-  font-size: 1.05rem;
-  line-height: 1.55;
+  font-size: 0.98rem;
+  line-height: 1.5;
   color: #57534e;
-}
-
-.explain-form-item-plain {
-  margin-bottom: 0;
-}
-
-.explain-form-item-plain :deep(.el-form-item__content) {
-  line-height: normal;
 }
 
 .explain-radio-row {
@@ -663,42 +651,42 @@ async function onGenerate() {
 }
 
 .explain-field-block--spaced {
-  margin-top: 1.35rem;
+  margin-top: 1.2rem;
 }
 
 .explain-field-label {
   display: block;
-  margin-bottom: 0.6rem;
-  font-size: 1.15rem;
+  margin-bottom: 0.55rem;
+  font-size: 1.05rem;
   font-weight: 700;
   color: #292524;
 }
 
 .explain-field-help,
 .explain-char-count {
-  margin: 0.65rem 0 0;
-  font-size: 1rem;
-  line-height: 1.55;
+  margin: 0.55rem 0 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
   color: #57534e;
 }
 
 .explain-ocr-row {
-  margin-top: 1rem;
-  padding: 1rem 1.1rem;
+  margin-top: 0.85rem;
+  padding: 0.9rem 1rem;
   border-radius: 0.85rem;
   border: 1px dashed rgba(15, 118, 110, 0.45);
   background: rgba(240, 253, 250, 0.65);
 }
 
 .explain-ocr-hint {
-  margin: 0 0 0.85rem;
-  font-size: 1rem;
-  line-height: 1.6;
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+  line-height: 1.55;
   color: #44403c;
 }
 
 .explain-ocr-hint code {
-  font-size: 0.92rem;
+  font-size: 0.88rem;
   word-break: break-all;
   color: #0f766e;
 }
@@ -710,41 +698,48 @@ async function onGenerate() {
 @media (min-width: 640px) {
   .explain-ocr-btn {
     width: auto;
-    min-width: 14rem;
+    min-width: 13rem;
   }
 }
 
 .explain-textarea :deep(.el-textarea__inner) {
-  font-size: 1.15rem;
-  line-height: 1.65;
+  font-size: 1.05rem;
+  line-height: 1.6;
   border-radius: 0.75rem;
-  padding: 1rem 1.1rem;
+  padding: 0.85rem 1rem;
 }
 
 .explain-url-input :deep(.el-input__wrapper) {
   border-radius: 0.75rem;
-  padding: 0.35rem 1rem;
-  min-height: 3.25rem;
+  padding: 0.3rem 0.9rem;
+  min-height: 3rem;
 }
 
 .explain-url-input :deep(.el-input__inner) {
-  font-size: 1.1rem;
+  font-size: 1.02rem;
 }
 
 .explain-cta-wrap {
   position: sticky;
   bottom: 0;
   z-index: 2;
-  margin-top: 0.5rem;
-  padding: 1.25rem 0 0.5rem;
-  background: linear-gradient(180deg, transparent 0%, rgba(240, 253, 250, 0.65) 30%, rgba(240, 253, 250, 0.95) 100%);
+  margin-top: 0.25rem;
+  padding: 1rem 0 0.35rem;
+  background: linear-gradient(180deg, transparent 0%, rgba(240, 253, 250, 0.55) 35%, rgba(255, 255, 255, 0.96) 100%);
+}
+
+@media (min-width: 768px) {
+  .explain-cta-wrap--sidebar {
+    margin-top: 0;
+    padding-bottom: 0.75rem;
+  }
 }
 
 .explain-cta-btn {
   width: 100%;
   height: auto !important;
-  padding: 1rem 1.5rem !important;
-  font-size: 1.25rem !important;
+  padding: 0.95rem 1.35rem !important;
+  font-size: 1.15rem !important;
   font-weight: 700 !important;
   border-radius: 0.85rem !important;
   box-shadow: 0 4px 14px rgba(15, 118, 110, 0.28);

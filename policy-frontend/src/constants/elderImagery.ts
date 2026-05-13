@@ -13,10 +13,6 @@ export const IMG_LAYOUT_RAIL =
 export const IMG_AUTH_PANEL =
   'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=1400&q=80'
 
-/** 解读页首屏配图：乐龄、阅读与安宁感 */
-export const IMG_EXPLAIN_HERO =
-  'https://images.unsplash.com/photo-1576765608535-5f04d1e2f342?auto=format&fit=crop&w=1000&q=80'
-
 /** 历史列表页头装饰条：晨光、安宁 */
 export const IMG_HISTORY_STRIP =
   'https://images.unsplash.com/photo-1494390248081-4e521a5940eb?auto=format&fit=crop&w=1600&q=75'
