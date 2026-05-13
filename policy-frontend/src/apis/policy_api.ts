@@ -3,6 +3,8 @@ import request from '@/apis/request'
 
 export interface ExplainPayload {
   text: string
+  /** 可与正文同时使用：服务端抓取网页提炼要点后与 text 合并再解读 */
+  url?: string
   topic?: string
 }
 
@@ -140,7 +142,7 @@ async function runPolicyExplainSse(
   }
 }
 
-/** POST /policy/explain：SSE，`event` 为 `partial` | `done` | `error`（兼容旧版 `delta`） */
+/** POST /policy/explain：SSE；请求体可同时含 `text` 与 `url`（混合解读） */
 export async function explainPolicyStream(
   data: ExplainPayload,
   callbacks: ExplainStreamCallbacks,

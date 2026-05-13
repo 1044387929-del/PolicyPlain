@@ -123,51 +123,31 @@ async def _stream_explain_and_save(
     yield sse_event({"event": "done", **out.model_dump()})
 
 
-def _sse_headers() -> dict[str, str]:
-    return {
-        "Cache-Control": "no-cache",
-        "Connection": "keep-alive",
-        "X-Accel-Buffering": "no",
-    }
+async def _stream_mixed_explain(
+    pasted: str,
+    url_part: str | None,
+    topic: str,
+    session: AsyncSession,
+    current: UserModel,
+) -> AsyncIterator[str]:
+    """粘贴正文、可选网址合并后走同一套 LLM 流式解读。"""
+    pasted_st = pasted.strip()
+    url_st = (url_part or "").strip()
+    if not pasted_st and not url_st:
+        yield sse_event({"event": "error", "detail": "请填写政策正文，或填写政策网页链接，至少填写一项"})
+        return
 
+    text_for_llm = ""
+    persist = ""
 
-@router.post("/explain")
-async def explain(
-    body: ExplainRequest,
-    session: AsyncSession = Depends(get_session_instance),
-    current: UserModel = Depends(get_current_user),
-):
-    """流式解读：SSE，`event` 为 `partial`（可解析的中间结果）| `done` | `error`。"""
-    text = body.text.strip()
-    if not text:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="文本不能为空")
-    if len(text) > settings.POLICY_TEXT_MAX_CHARS:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="文本过长")
+    if url_st:
+        try:
+            safe_url = assert_public_http_url(url_st)
+        except HTTPException as e:
+            d = e.detail if isinstance(e.detail, str) else "网址无效"
+            yield sse_event({"event": "error", "detail": d})
+            return
 
-    topic = body.topic or "general"
-    if topic not in ALLOWED_TOPICS:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="无效的主题标签")
-
-    return StreamingResponse(
-        _stream_explain_and_save(text, topic, session, current, text),
-        media_type="text/event-stream; charset=utf-8",
-        headers=_sse_headers(),
-    )
-
-
-@router.post("/explain-from-url")
-async def explain_from_url(
-    body: ExplainFromUrlRequest,
-    session: AsyncSession = Depends(get_session_instance),
-    current: UserModel = Depends(get_current_user),
-):
-    """从网址抓取网页 → 提炼政策要点 → 流式白话解读。SSE 含 `status` 阶段提示。"""
-    safe_url = assert_public_http_url(body.url)
-    topic = body.topic or "general"
-    if topic not in ALLOWED_TOPICS:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="无效的主题标签")
-
-    async def from_url_stream() -> AsyncIterator[str]:
         yield sse_event({"event": "status", "stage": "fetch", "message": "正在抓取网页…"})
         try:
             html_bytes, final_url = await fetch_html(safe_url)
@@ -186,7 +166,7 @@ async def explain_from_url(
             yield sse_event(
                 {
                     "event": "error",
-                    "detail": "未能从页面提取到足够的正文，请换链接或改用「粘贴正文」方式。",
+                    "detail": "未能从页面提取到足够的正文，请换链接或补充粘贴正文。",
                 },
             )
             return
@@ -219,29 +199,75 @@ async def explain_from_url(
             yield sse_event(
                 {
                     "event": "error",
-                    "detail": "提炼结果过短，该页面可能不是政策/办事类内容，请换链接或粘贴正文。",
+                    "detail": "提炼结果过短，该页面可能不是政策/办事类内容，请换链接或补充粘贴正文。",
                 },
             )
             return
 
         synopsis_for_llm = synopsis[: settings.POLICY_TEXT_MAX_CHARS]
         excerpt = plain[:6000]
-        persist = (
+        base_persist = (
             f"【来源网址】{final_url}\n\n【提炼后的政策要点】\n{synopsis_for_llm}\n\n【网页正文摘录】\n{excerpt}"
         )
 
-        yield sse_event({"event": "status", "stage": "explain", "message": "正在生成白话解读…"})
-        async for chunk in _stream_explain_and_save(
-            synopsis_for_llm,
-            topic,
-            session,
-            current,
-            persist,
-        ):
-            yield chunk
+        if pasted_st:
+            glue = "\n\n---\n【以下为与网页相关的补充材料（用户粘贴）】\n"
+            text_for_llm = (synopsis_for_llm + glue + pasted_st)[: settings.POLICY_TEXT_MAX_CHARS]
+            persist = (base_persist + f"\n\n【用户补充粘贴的正文】\n{pasted_st}")[:80000]
+        else:
+            text_for_llm = synopsis_for_llm
+            persist = base_persist[:80000]
+    else:
+        if len(pasted_st) > settings.POLICY_TEXT_MAX_CHARS:
+            yield sse_event({"event": "error", "detail": "文本过长"})
+            return
+        text_for_llm = pasted_st
+        persist = pasted_st
+
+    yield sse_event({"event": "status", "stage": "explain", "message": "正在生成白话解读…"})
+    async for chunk in _stream_explain_and_save(text_for_llm, topic, session, current, persist):
+        yield chunk
+
+
+def _sse_headers() -> dict[str, str]:
+    return {
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no",
+    }
+
+
+@router.post("/explain")
+async def explain(
+    body: ExplainRequest,
+    session: AsyncSession = Depends(get_session_instance),
+    current: UserModel = Depends(get_current_user),
+):
+    """流式解读：SSE。支持仅粘贴、仅网址、或正文+网址混合（截图 OCR 由前端填入正文）。"""
+    topic = body.topic or "general"
+    if topic not in ALLOWED_TOPICS:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="无效的主题标签")
 
     return StreamingResponse(
-        from_url_stream(),
+        _stream_mixed_explain(body.text, body.url, topic, session, current),
+        media_type="text/event-stream; charset=utf-8",
+        headers=_sse_headers(),
+    )
+
+
+@router.post("/explain-from-url")
+async def explain_from_url(
+    body: ExplainFromUrlRequest,
+    session: AsyncSession = Depends(get_session_instance),
+    current: UserModel = Depends(get_current_user),
+):
+    """兼容旧客户端：仅从网址解读，等价于 POST /explain 且 text 为空。"""
+    topic = body.topic or "general"
+    if topic not in ALLOWED_TOPICS:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="无效的主题标签")
+
+    return StreamingResponse(
+        _stream_mixed_explain("", body.url, topic, session, current),
         media_type="text/event-stream; charset=utf-8",
         headers=_sse_headers(),
     )

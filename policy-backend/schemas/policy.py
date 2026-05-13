@@ -1,12 +1,21 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, Self
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class ExplainRequest(BaseModel):
-    text: str
+    """粘贴正文、网页链接可单独或同时使用；截图 OCR 由前端填入 text。"""
+
+    text: str = Field(default="", description="粘贴的政策正文（可与 url 同时使用）")
+    url: str | None = Field(default=None, description="可选的政府公开政策页链接")
     topic: str | None = Field(default="general")
+
+    @model_validator(mode="after")
+    def at_least_text_or_url(self) -> Self:
+        if not self.text.strip() and not (self.url or "").strip():
+            raise ValueError("请填写政策正文，或填写政策网页链接，至少填写一项")
+        return self
 
 
 class ExplainFromUrlRequest(BaseModel):

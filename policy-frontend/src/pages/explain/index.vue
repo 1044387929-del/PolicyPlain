@@ -4,7 +4,7 @@
       <p class="explain-hero-kicker">面向老年人与家属 · 字号大 · 步骤清晰</p>
       <h1 class="explain-hero-title">把政策条文，说成听得懂的家常话</h1>
       <p class="explain-hero-desc">
-        支持<strong>粘贴正文</strong>、<strong>政府公开网页链接</strong>或<strong>上传截图识别</strong>；生成后可朗读收听。内容会保存在您的账号下便于回看。
+        支持<strong>粘贴正文</strong>、<strong>网页链接</strong>与<strong>截图识别</strong>在同一页组合使用；生成后可朗读收听。内容会保存在您的账号下便于回看。
       </p>
     </header>
 
@@ -39,60 +39,26 @@
         <span class="explain-step-num">2</span>
         <div>
           <h2 class="explain-step-title">提供政策内容</h2>
-          <p class="explain-step-hint">三选一：粘贴文字、填写政府公开页链接，或上传政策截图自动识别成文字。</p>
+          <p class="explain-step-hint">
+            可在<strong>同一页</strong>里组合使用：粘贴文字、填写政府公开页链接、上传截图识别；至少提供其中一种。若同时填写链接与正文，会先抓网页提炼要点，再与您粘贴的内容<strong>合并</strong>后解读。
+          </p>
         </div>
       </div>
 
-      <div class="explain-source-toggle">
-        <button
-          type="button"
-          class="explain-source-btn"
-          :class="{ 'explain-source-btn--active': sourceMode === 'paste' }"
-          @click="sourceMode = 'paste'"
-        >
-          粘贴正文
-        </button>
-        <button
-          type="button"
-          class="explain-source-btn"
-          :class="{ 'explain-source-btn--active': sourceMode === 'url' }"
-          @click="sourceMode = 'url'"
-        >
-          输入网址
-        </button>
-      </div>
-
-      <div v-if="sourceMode === 'paste'" class="explain-field-block">
-        <label class="explain-field-label">政策或通知原文</label>
+      <div class="explain-field-block">
+        <label class="explain-field-label">政策原文（粘贴，或由下方「上传截图」识别后填入）</label>
         <el-input
           v-model="text"
           type="textarea"
-          :rows="12"
-          placeholder="把通知、办事指南或政策条文粘贴到此处…"
+          :rows="10"
+          placeholder="把通知、办事指南或政策条文粘贴到此处；也可先上传截图，识别结果会出现在这里…"
           class="explain-textarea"
         />
         <p class="explain-char-count">当前字数：{{ text.length }}</p>
-        <div class="explain-ocr-row">
-          <p class="explain-ocr-hint">
-            拍了纸质通知、电子版截图？点下面按钮上传 <strong>JPG / PNG / WebP</strong>（单张不超过 8MB），识别结果会写入上方正文框。需服务端配置与
-            <strong>hr-backend</strong> 相同的 <code>PADDLE_OCR_ACCESS_TOKEN</code>。
-          </p>
-          <el-upload
-            :show-file-list="false"
-            accept="image/jpeg,image/png,image/webp"
-            :disabled="ocrLoading"
-            :before-upload="beforeOcrUpload"
-            :http-request="runOcrUpload"
-          >
-            <el-button type="success" plain size="large" class="explain-ocr-btn" :loading="ocrLoading">
-              上传截图识别文字
-            </el-button>
-          </el-upload>
-        </div>
       </div>
 
-      <div v-else class="explain-field-block">
-        <label class="explain-field-label">政策网页链接（须以 http 或 https 开头）</label>
+      <div class="explain-field-block explain-field-block--spaced">
+        <label class="explain-field-label">政策网页链接（选填，可与上文同时使用）</label>
         <el-input
           v-model="pageUrl"
           type="url"
@@ -102,14 +68,32 @@
           class="explain-url-input"
         />
         <p class="explain-field-help">
-          系统将抓取网页正文，提炼政策要点后再生成白话解读。仅支持公网链接，内网与本地地址不可用。
+          填写后系统会抓取该页正文并提炼要点；若您同时粘贴了文字，会把<strong>网页要点 + 您的粘贴</strong>一起交给模型解读。仅支持公网 http/https。
         </p>
+      </div>
+
+      <div class="explain-ocr-row">
+        <p class="explain-ocr-hint">
+          拍了纸质通知、电子版截图？上传 <strong>JPG / PNG / WebP</strong>（单张不超过 8MB），识别文字会<strong>追加到上方原文框</strong>。需服务端配置
+          <code>PADDLE_OCR_ACCESS_TOKEN</code>（与 hr-backend 相同）。
+        </p>
+        <el-upload
+          :show-file-list="false"
+          accept="image/jpeg,image/png,image/webp"
+          :disabled="ocrLoading"
+          :before-upload="beforeOcrUpload"
+          :http-request="runOcrUpload"
+        >
+          <el-button type="success" plain size="large" class="explain-ocr-btn" :loading="ocrLoading">
+            上传截图识别文字
+          </el-button>
+        </el-upload>
       </div>
     </section>
 
     <section class="explain-cta-wrap">
       <el-button type="primary" size="large" class="explain-cta-btn" :loading="loading" @click="onGenerate">
-        {{ sourceMode === 'paste' ? '生成白话解读' : '从网址生成白话解读' }}
+        生成白话解读
       </el-button>
     </section>
 
@@ -170,7 +154,6 @@ import { Loading } from '@element-plus/icons-vue'
 import ExplainResultElder from '@/components/ExplainResultElder.vue'
 import {
   explainPolicyStream,
-  explainPolicyStreamFromUrl,
   ocrPolicyImage,
   type ExplainPartialPayload,
   type ExplainResponse,
@@ -179,7 +162,6 @@ import {
 const STREAMING_RECORD_ID = '__streaming__'
 
 const topic = ref<'general' | 'medical_insurance' | 'pension'>('general')
-const sourceMode = ref<'paste' | 'url'>('paste')
 const text = ref('')
 const pageUrl = ref('')
 const loading = ref(false)
@@ -249,21 +231,15 @@ async function runOcrUpload(options: UploadRequestOptions) {
 async function onGenerate() {
   if (loading.value) return
 
-  if (sourceMode.value === 'paste') {
-    if (!text.value.trim()) {
-      ElMessage.warning('请先粘贴正文')
-      return
-    }
-  } else {
-    const u = pageUrl.value.trim()
-    if (!u) {
-      ElMessage.warning('请先填写网址')
-      return
-    }
-    if (!/^https?:\/\//i.test(u)) {
-      ElMessage.warning('网址需以 http:// 或 https:// 开头')
-      return
-    }
+  const t = text.value.trim()
+  const u = pageUrl.value.trim()
+  if (!t && !u) {
+    ElMessage.warning('请至少填写正文、或填写政策网页链接、或先上传截图识别出文字')
+    return
+  }
+  if (u && !/^https?:\/\//i.test(u)) {
+    ElMessage.warning('链接需以 http:// 或 https:// 开头')
+    return
   }
 
   statusMessage.value = ''
@@ -293,14 +269,14 @@ async function onGenerate() {
     },
   }
 
+  const payload = {
+    text: t,
+    topic: topic.value,
+    ...(u ? { url: u } : {}),
+  }
+
   try {
-    if (sourceMode.value === 'paste') {
-      await explainPolicyStream({ text: text.value, topic: topic.value }, commonCallbacks, { signal })
-    } else {
-      await explainPolicyStreamFromUrl({ url: pageUrl.value.trim(), topic: topic.value }, commonCallbacks, {
-        signal,
-      })
-    }
+    await explainPolicyStream(payload, commonCallbacks, { signal })
   } catch {
     if (!signal.aborted) ElMessage.error('解读失败，请稍后重试')
   } finally {
@@ -443,40 +419,12 @@ async function onGenerate() {
   border-radius: 0.65rem !important;
 }
 
-.explain-source-toggle {
-  display: flex;
-  gap: 0.75rem;
-  margin-bottom: 1.35rem;
-  padding: 0.35rem;
-  border-radius: 0.9rem;
-  background: #f5f5f4;
-  border: 1px solid #e7e5e4;
-}
-
-.explain-source-btn {
-  flex: 1;
-  cursor: pointer;
-  border: none;
-  border-radius: 0.65rem;
-  padding: 0.85rem 1rem;
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #57534e;
-  background: transparent;
-  transition:
-    background 0.15s,
-    color 0.15s,
-    box-shadow 0.15s;
-}
-
-.explain-source-btn--active {
-  color: #fff;
-  background: linear-gradient(145deg, #0d9488, #0f766e);
-  box-shadow: 0 2px 10px rgba(15, 118, 110, 0.35);
-}
-
 .explain-field-block {
   margin-top: 0.25rem;
+}
+
+.explain-field-block--spaced {
+  margin-top: 1.35rem;
 }
 
 .explain-field-label {
