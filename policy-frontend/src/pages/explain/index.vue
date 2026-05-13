@@ -132,6 +132,11 @@
                   :animate-entry="displayResult.record_id !== STREAMING_RECORD_ID"
                   :auto-speak-when-ready="displayResult.record_id !== STREAMING_RECORD_ID"
                 />
+                <FollowUpChat
+                  v-if="displayResult.record_id !== STREAMING_RECORD_ID"
+                  :key="displayResult.record_id"
+                  :record-id="displayResult.record_id"
+                />
                 <p v-if="displayResult.record_id === STREAMING_RECORD_ID" class="drawer-stream-hint">
                   内容仍在补充中，请稍候…
                 </p>
