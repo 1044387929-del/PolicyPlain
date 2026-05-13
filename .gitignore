@@ -1,6 +1,6 @@
-# Reference projects (optional: remove lines below to version-control them)
-hr-backend/*
-hr-frontend-src/*
+# HR 参考项目：仅本地保留，不参与本仓库版本控制（根目录下整目录忽略）
+/hr-backend/
+/hr-frontend-src/
 
 # PolicyPlain
 policy-backend/.env
