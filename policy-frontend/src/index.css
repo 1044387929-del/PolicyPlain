@@ -2,6 +2,10 @@
 
 /* 全局设计变量：偏暖、易读、偏「政务 + 商业」质感 */
 :root {
+  /* Element Plus 与 rem 联动：随 html 字号略放大组件内文字 */
+  --el-font-size-base: 0.9375rem;
+  --el-font-size-small: 0.8125rem;
+  --el-font-size-large: 1.0625rem;
   --pp-bg-top: #faf7f2;
   --pp-bg-mid: #f0f6f4;
   --pp-bg-bottom: #e5eef0;
@@ -16,6 +20,32 @@
 
 html {
   scroll-behavior: smooth;
+  font-size: 100%;
+}
+
+/* 适老化：宏观放大整站（Tailwind rem、多数 EP 字号随根字号变化） */
+html[data-pp-text-scale='standard'] {
+  font-size: 100%;
+}
+
+html[data-pp-text-scale='large'] {
+  font-size: 120%;
+}
+
+html[data-pp-text-scale='xlarge'] {
+  font-size: 130%;
+}
+
+html[data-pp-text-scale='large'],
+html[data-pp-text-scale='xlarge'] {
+  --el-font-size-base: 1rem;
+  --el-font-size-small: 0.875rem;
+  --el-font-size-large: 1.125rem;
+}
+
+html[data-pp-text-scale='large'] body,
+html[data-pp-text-scale='xlarge'] body {
+  line-height: 1.6;
 }
 
 body {

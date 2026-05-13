@@ -15,5 +15,12 @@ export default defineConfig({
   server: {
     port: 8080,
     strictPort: true,
+    // 内网穿透（ngrok 等）：外网域名与本地 Host 不一致，需显式允许，否则报 Blocked request
+    allowedHosts: [
+      'localhost',
+      '.ngrok-free.dev',
+      '.ngrok-free.app',
+      '.ngrok.io',
+    ],
   },
 })
