@@ -176,12 +176,134 @@ export function fetchExplanations(params?: { limit?: number; offset?: number }) 
   return request.get<ExplanationListResponse>('/policy/explanations', params)
 }
 
+export interface FollowUpItem {
+  id: string
+  turn_index: number
+  question: string
+  answer: string
+  created_at: string
+}
+
 export interface ExplanationDetailResponse {
   record_id: string
   topic: string
   created_at: string
   input_text: string | null
   result: Omit<ExplainResponse, 'record_id'>
+  followups?: FollowUpItem[]
+}
+
+export type FollowUpDonePayload = {
+  answer: string
+  turn: number
+  followup_id: string
+}
+
+export type FollowUpStreamCallbacks = {
+  onDelta?: (text: string) => void
+  onDone?: (payload: FollowUpDonePayload) => void
+  onError?: (detail: string) => void
+}
+
+async function runPolicyFollowUpSse(
+  recordId: string,
+  question: string,
+  callbacks: FollowUpStreamCallbacks,
+  options?: { signal?: AbortSignal },
+): Promise<void> {
+  const baseURL = import.meta.env.VITE_API_BASE_URL
+  const token = useUserStore().accessToken
+  try {
+    const res = await fetch(`${baseURL}/policy/explanations/${encodeURIComponent(recordId)}/follow-up`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ question }),
+      signal: options?.signal,
+    })
+    if (!res.ok) {
+      let detail = `请求失败（${res.status}）`
+      try {
+        const j = (await res.json()) as { detail?: unknown }
+        if (typeof j.detail === 'string') detail = j.detail
+      } catch {
+        /* ignore */
+      }
+      callbacks.onError?.(detail)
+      return
+    }
+    const reader = res.body?.getReader()
+    if (!reader) {
+      callbacks.onError?.('无法读取响应流')
+      return
+    }
+    const dec = new TextDecoder()
+    let buf = ''
+
+    const consumeBlock = (block: string) => {
+      for (const line of block.split('\n')) {
+        const t = line.trim()
+        if (!t.startsWith('data:')) continue
+        const raw = t.slice(5).trim()
+        let ev: Record<string, unknown>
+        try {
+          ev = JSON.parse(raw) as Record<string, unknown>
+        } catch {
+          continue
+        }
+        const evName = ev.event
+        if (evName === 'delta' && typeof ev.text === 'string') callbacks.onDelta?.(ev.text)
+        else if (evName === 'error' && typeof ev.detail === 'string') {
+          callbacks.onError?.(ev.detail)
+          return true
+        } else if (evName === 'done') {
+          const ans = typeof ev.answer === 'string' ? ev.answer : ''
+          const turn = typeof ev.turn === 'number' ? ev.turn : Number(ev.turn)
+          const fid = typeof ev.followup_id === 'string' ? ev.followup_id : ''
+          callbacks.onDone?.({
+            answer: ans,
+            turn: Number.isFinite(turn) ? turn : 0,
+            followup_id: fid,
+          })
+          return true
+        }
+      }
+      return false
+    }
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) {
+        buf += dec.decode()
+        break
+      }
+      buf += dec.decode(value, { stream: true })
+      let idx: number
+      while ((idx = buf.indexOf('\n\n')) >= 0) {
+        const block = buf.slice(0, idx)
+        buf = buf.slice(idx + 2)
+        if (consumeBlock(block)) return
+      }
+    }
+    const tail = buf.trim()
+    if (tail && consumeBlock(tail)) return
+    callbacks.onError?.('流式响应未正常结束')
+  } catch (e) {
+    if (e instanceof DOMException && e.name === 'AbortError') return
+    callbacks.onError?.(e instanceof Error ? e.message : '网络异常')
+  }
+}
+
+/** POST /policy/explanations/:id/follow-up：SSE，delta 为增量文本，done 含 answer/turn */
+export async function followUpPolicyStream(
+  recordId: string,
+  question: string,
+  callbacks: FollowUpStreamCallbacks,
+  options?: { signal?: AbortSignal },
+): Promise<void> {
+  return runPolicyFollowUpSse(recordId, question, callbacks, options)
 }
 
 export function fetchExplanationDetail(id: string) {

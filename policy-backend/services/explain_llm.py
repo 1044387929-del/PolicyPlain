@@ -184,3 +184,74 @@ def normalize_to_schema(data: dict[str, Any]) -> ExplainResultFields:
         model=data.get("model"),
         warnings=arr("warnings"),
     )
+
+
+FOLLOWUP_SYSTEM = """你是面向老年人与家属的政策白话讲解员（非官方）。
+用户已经阅读过针对一段政策材料的「结构化白话解读」，现在要在此基础上追问。
+
+规则：
+1. 只根据【政策原文或来源摘录】与【已给出的解读内容】以及此前的追问与回答作答；不要编造其中都没有的电话、金额、日期和地区版本。
+2. 用日常口语、短句，直接回应用户的具体问题；不要用公文腔。
+3. 若材料里确实没有相关信息，清楚说明「原文和现有材料里没写到」，并温和提醒以当地经办部门解释为准。
+4. 直接输出自然段落的纯文本，不要使用 JSON、不要用 Markdown 标题符号堆砌。"""
+
+
+async def llm_followup_token_stream(
+    input_text: str,
+    result_json_text: str,
+    topic: str,
+    prior_qa: list[tuple[str, str]],
+    question: str,
+) -> AsyncIterator[str]:
+    """追问：流式产出纯文本片段（非 JSON）。"""
+    if not settings.llm_api_key:
+        mock = (
+            f"（演示）您在「{topic}」主题下提问：{question[:120]}"
+            + ("…" if len(question) > 120 else "")
+            + " 接入真实大模型密钥后，这里会结合您保存的原文和解读具体分析。"
+        )
+        step = max(20, len(mock) // 8)
+        for i in range(0, len(mock), step):
+            yield mock[i : i + step]
+            await asyncio.sleep(0)
+        return
+
+    base = (settings.OPENAI_BASE_URL or "").strip() or "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    client = AsyncOpenAI(
+        api_key=settings.llm_api_key,
+        base_url=base,
+        timeout=httpx.Timeout(settings.LLM_TIMEOUT_SECONDS),
+    )
+    prior_block = ""
+    for i, (pq, pa) in enumerate(prior_qa, start=1):
+        prior_block += f"\n【第{i}轮追问】{pq}\n【回答】{pa}\n"
+
+    body_in = (input_text or "").strip()
+    body_in = body_in[:50000]
+    body_res = (result_json_text or "").strip()[:80000]
+
+    user_msg = (
+        f"主题标签：{topic}\n\n"
+        "【政策原文或来源摘录】\n"
+        f"{body_in}\n\n"
+        "【结构化白话解读（JSON）】\n"
+        f"{body_res}\n"
+        f"{prior_block}\n"
+        "【用户本轮追问】\n"
+        f"{question.strip()}\n\n"
+        "请直接给出口语化回答，不要用 JSON 包裹，不要重复打印整段原文。"
+    )
+    stream = await client.chat.completions.create(
+        model=settings.OPENAI_MODEL,
+        messages=[
+            {"role": "system", "content": FOLLOWUP_SYSTEM},
+            {"role": "user", "content": user_msg},
+        ],
+        stream=True,
+    )
+    async for chunk in stream:
+        if not chunk.choices:
+            continue
+        delta = chunk.choices[0].delta
+        if delta and delta.content:
+            yield delta.content

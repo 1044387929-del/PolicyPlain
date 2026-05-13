@@ -1,7 +1,7 @@
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.user import PolicyExplanationModel
+from models.user import PolicyExplanationModel, PolicyFollowupModel
 
 
 class PolicyRepo:
@@ -39,3 +39,24 @@ class PolicyRepo:
             )
         )
         return int(r.scalar_one())
+
+    async def count_followups(self, explanation_id: str) -> int:
+        r = await self.session.execute(
+            select(func.count()).select_from(PolicyFollowupModel).where(
+                PolicyFollowupModel.explanation_id == explanation_id
+            )
+        )
+        return int(r.scalar_one())
+
+    async def list_followups_for_explanation(self, explanation_id: str) -> list[PolicyFollowupModel]:
+        r = await self.session.execute(
+            select(PolicyFollowupModel)
+            .where(PolicyFollowupModel.explanation_id == explanation_id)
+            .order_by(PolicyFollowupModel.turn_index.asc())
+        )
+        return list(r.scalars().all())
+
+    async def create_followup(self, row: PolicyFollowupModel) -> PolicyFollowupModel:
+        self.session.add(row)
+        await self.session.flush()
+        return row

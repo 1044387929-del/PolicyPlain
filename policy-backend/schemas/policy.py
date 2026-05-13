@@ -4,6 +4,18 @@ from typing import Any, Self
 from pydantic import BaseModel, Field, model_validator
 
 
+class FollowUpRequest(BaseModel):
+    question: str = Field(..., min_length=1, max_length=4000)
+
+
+class FollowUpItem(BaseModel):
+    id: str
+    turn_index: int
+    question: str
+    answer: str
+    created_at: datetime
+
+
 class ExplainRequest(BaseModel):
     """粘贴正文、网页链接可单独或同时使用；截图 OCR 由前端填入 text。"""
 
@@ -64,3 +76,4 @@ class ExplanationDetailResponse(BaseModel):
     created_at: datetime
     input_text: str | None
     result: ExplainResultFields
+    followups: list[FollowUpItem] = Field(default_factory=list)

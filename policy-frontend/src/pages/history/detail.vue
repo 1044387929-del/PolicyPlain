@@ -23,6 +23,11 @@
       </el-card>
 
       <ExplainResultElder v-if="mergedResult" :result="mergedResult" />
+      <FollowUpChat
+        v-if="detail"
+        :record-id="detail.record_id"
+        :seed-followups="detail.followups ?? []"
+      />
     </div>
   </div>
 </template>
@@ -32,6 +37,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import ExplainResultElder from '@/components/ExplainResultElder.vue'
+import FollowUpChat from '@/components/FollowUpChat.vue'
 import {
   fetchExplanationDetail,
   type ExplainResponse,

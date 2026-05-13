@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from dependencies import get_current_user, get_session_instance
 from core.ocr import PaddleOcr
-from models.user import PolicyExplanationModel, UserModel
+from models.user import PolicyExplanationModel, PolicyFollowupModel, UserModel
 from repository.policy_repo import PolicyRepo
 from schemas.policy import (
     ExplainFromUrlRequest,
@@ -25,10 +25,13 @@ from schemas.policy import (
     ExplanationListItem,
     ExplanationListResponse,
     ExplainResultFields,
+    FollowUpItem,
+    FollowUpRequest,
     PolicyOcrImageResponse,
 )
 from services.explain_llm import (
     extract_synopsis_from_web_plain,
+    llm_followup_token_stream,
     llm_token_stream,
     normalize_to_schema,
     sse_event,
@@ -44,6 +47,7 @@ logger = logging.getLogger(__name__)
 ALLOWED_TOPICS = frozenset({"general", "medical_insurance", "pension"})
 OCR_ALLOWED_IMAGE_TYPES = frozenset({"image/jpeg", "image/png", "image/webp"})
 OCR_MAX_BYTES = 8 * 1024 * 1024
+MAX_FOLLOWUP_ROUNDS = 3
 
 
 async def _stream_explain_and_save(
@@ -237,6 +241,80 @@ def _sse_headers() -> dict[str, str]:
     }
 
 
+async def _stream_follow_up_answer(
+    record_id: str,
+    question: str,
+    session: AsyncSession,
+    current: UserModel,
+) -> AsyncIterator[str]:
+    async with session.begin():
+        repo = PolicyRepo(session)
+        row = await repo.get_by_id_for_user(record_id, current.id)
+        if not row:
+            yield sse_event({"event": "error", "detail": "记录不存在"})
+            return
+        n = await repo.count_followups(record_id)
+        if n >= MAX_FOLLOWUP_ROUNDS:
+            yield sse_event({"event": "error", "detail": "本条解读的追问已达上限（最多 3 轮）"})
+            return
+        input_text = row.input_text or ""
+        topic = row.topic
+        result_snapshot = json.dumps(row.result_json, ensure_ascii=False)
+        prior_rows = await repo.list_followups_for_explanation(record_id)
+        prior_pairs = [(p.question, p.answer) for p in prior_rows]
+
+    acc = ""
+    try:
+        async for piece in llm_followup_token_stream(input_text, result_snapshot, topic, prior_pairs, question):
+            acc += piece
+            if piece:
+                yield sse_event({"event": "delta", "text": piece})
+    except AuthenticationError:
+        yield sse_event(
+            {
+                "event": "error",
+                "detail": (
+                    "大模型 API 密钥无效（百炼返回 401）。请检查 DASHSCOPE_API_KEY / OPENAI_API_KEY，"
+                    "并在百炼控制台确认密钥有效。"
+                ),
+            }
+        )
+        return
+    except APIError as e:
+        yield sse_event({"event": "error", "detail": str(e) or "大模型接口调用失败"})
+        return
+
+    answer = acc.strip()
+    if not answer:
+        yield sse_event({"event": "error", "detail": "模型未返回有效内容，请重试"})
+        return
+
+    fid = str(uuid.uuid4())
+    try:
+        async with session.begin():
+            repo = PolicyRepo(session)
+            n2 = await repo.count_followups(record_id)
+            if n2 >= MAX_FOLLOWUP_ROUNDS:
+                yield sse_event({"event": "error", "detail": "追问已达上限，请刷新后查看已保存的问答"})
+                return
+            turn = n2 + 1
+            await repo.create_followup(
+                PolicyFollowupModel(
+                    id=fid,
+                    explanation_id=record_id,
+                    turn_index=turn,
+                    question=question.strip(),
+                    answer=answer,
+                )
+            )
+    except Exception:
+        logger.exception("保存追问失败")
+        yield sse_event({"event": "error", "detail": "保存追问失败，请重试"})
+        return
+
+    yield sse_event({"event": "done", "answer": answer, "turn": turn, "followup_id": fid})
+
+
 @router.post("/explain")
 async def explain(
     body: ExplainRequest,
@@ -361,14 +439,47 @@ async def get_explanation(
     async with session.begin():
         repo = PolicyRepo(session)
         row = await repo.get_by_id_for_user(record_id, current.id)
+        follow_rows: list[PolicyFollowupModel] = []
+        if row:
+            follow_rows = await repo.list_followups_for_explanation(record_id)
     if not row:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="记录不存在")
 
     result = ExplainResultFields.model_validate(row.result_json)
+    followups = [
+        FollowUpItem(
+            id=f.id,
+            turn_index=f.turn_index,
+            question=f.question,
+            answer=f.answer,
+            created_at=f.created_at,
+        )
+        for f in follow_rows
+    ]
     return ExplanationDetailResponse(
         record_id=row.id,
         topic=row.topic,
         created_at=row.created_at,
         input_text=row.input_text,
         result=result,
+        followups=followups,
+    )
+
+
+@router.post("/explanations/{record_id}/follow-up")
+async def follow_up_explanation(
+    record_id: str,
+    body: FollowUpRequest,
+    session: AsyncSession = Depends(get_session_instance),
+    current: UserModel = Depends(get_current_user),
+):
+    """对已有解读追问，SSE 流式返回纯文本；同一记录最多 3 轮。"""
+    q = body.question.strip()
+    if not q:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="问题不能为空")
+
+    return StreamingResponse(
+        _stream_follow_up_answer(record_id, q, session, current),
+        media_type="text/event-stream; charset=utf-8",
+        headers=_sse_headers(),
     )

@@ -137,6 +137,11 @@
             :animate-entry="displayResult.record_id !== STREAMING_RECORD_ID"
             :auto-speak-when-ready="displayResult.record_id !== STREAMING_RECORD_ID"
           />
+          <FollowUpChat
+            v-if="displayResult.record_id !== STREAMING_RECORD_ID"
+            :key="displayResult.record_id"
+            :record-id="displayResult.record_id"
+          />
           <p v-if="displayResult.record_id === STREAMING_RECORD_ID" class="drawer-stream-hint">
             内容仍在补充中，请稍候…
           </p>
@@ -152,6 +157,7 @@ import type { UploadRawFile, UploadRequestOptions } from 'element-plus'
 import { ElMessage } from 'element-plus'
 import { Loading } from '@element-plus/icons-vue'
 import ExplainResultElder from '@/components/ExplainResultElder.vue'
+import FollowUpChat from '@/components/FollowUpChat.vue'
 import {
   explainPolicyStream,
   ocrPolicyImage,
@@ -222,7 +228,7 @@ async function runOcrUpload(options: UploadRequestOptions) {
     const ax = e as { response?: { data?: { detail?: string } } }
     const d = ax.response?.data?.detail
     ElMessage.error(typeof d === 'string' ? d : '识别失败，请稍后重试')
-    options.onError?.(e as Error)
+    options.onError?.(e as never)
   } finally {
     ocrLoading.value = false
   }

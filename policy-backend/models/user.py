@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional
 
 from pwdlib import PasswordHash
-from sqlalchemy import DateTime, ForeignKey, String, Text, JSON
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from models import Base
@@ -45,3 +45,23 @@ class PolicyExplanationModel(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     user: Mapped["UserModel"] = relationship(back_populates="explanations")
+    followups: Mapped[list["PolicyFollowupModel"]] = relationship(
+        back_populates="explanation",
+        cascade="all, delete-orphan",
+        order_by="PolicyFollowupModel.turn_index",
+    )
+
+
+class PolicyFollowupModel(Base):
+    __tablename__ = "policy_followups"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    explanation_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("policy_explanations.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    turn_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    question: Mapped[str] = mapped_column(Text, nullable=False)
+    answer: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    explanation: Mapped["PolicyExplanationModel"] = relationship(back_populates="followups")
