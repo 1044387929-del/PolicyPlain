@@ -1,6 +1,8 @@
 <template>
   <div class="explain-page">
-    <header class="explain-hero">
+    <div class="explain-shell">
+      <div class="explain-shell-left">
+        <header class="explain-hero">
       <p class="explain-hero-kicker">面向老年人与家属 · 字号大 · 步骤清晰</p>
       <h1 class="explain-hero-title">把政策条文，说成听得懂的家常话</h1>
       <p class="explain-hero-desc">
@@ -96,8 +98,52 @@
         生成白话解读
       </el-button>
     </section>
+      </div>
+
+      <aside class="explain-preview-aside" aria-label="解读预览">
+        <div class="explain-preview-sticky">
+          <div v-if="!inlinePreviewActive" class="explain-preview-empty">
+            <p class="explain-preview-empty-title">白话预览</p>
+            <p class="explain-preview-empty-desc">
+              在左侧填好主题与材料后点击「生成白话解读」，生成过程与结果会出现在此栏（宽屏固定跟随，便于对照原文）。
+            </p>
+          </div>
+          <div v-else class="explain-preview-pane">
+            <div class="drawer-body-root explain-preview-body">
+              <div v-if="statusMessage" class="drawer-status">{{ statusMessage }}</div>
+              <template v-if="!displayResult && loading">
+                <div class="drawer-generating drawer-generating--wait">
+                  <div class="drawer-gen-head">
+                    <el-icon class="drawer-gen-icon is-loading"><Loading /></el-icon>
+                    <div>
+                      <p class="drawer-gen-title">正在生成白话解读</p>
+                      <p class="drawer-gen-desc">
+                        服务端通过 SSE 推送可解析的结构化片段，下方会随推送<strong>逐步出现</strong>摘要与条目；完成后会保存记录并支持自动朗读。
+                      </p>
+                    </div>
+                  </div>
+                  <el-skeleton animated :rows="4" class="drawer-wait-skel" />
+                </div>
+              </template>
+              <div v-else-if="displayResult" class="drawer-result">
+                <ExplainResultElder
+                  :key="displayResult.record_id"
+                  :result="displayResult"
+                  :animate-entry="displayResult.record_id !== STREAMING_RECORD_ID"
+                  :auto-speak-when-ready="displayResult.record_id !== STREAMING_RECORD_ID"
+                />
+                <p v-if="displayResult.record_id === STREAMING_RECORD_ID" class="drawer-stream-hint">
+                  内容仍在补充中，请稍候…
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
 
     <el-drawer
+      v-if="!desktop"
       v-model="drawerVisible"
       direction="rtl"
       size="90%"
@@ -147,7 +193,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, shallowRef } from 'vue'
+import { computed, onMounted, onUnmounted, ref, shallowRef } from 'vue'
 import type { UploadRawFile, UploadRequestOptions } from 'element-plus'
 import { ElMessage } from 'element-plus'
 import { Loading } from '@element-plus/icons-vue'
@@ -173,7 +219,25 @@ const ocrLoading = ref(false)
 
 const displayResult = computed(() => finalResult.value ?? streamingPreview.value)
 const drawerVisible = ref(false)
+const desktop = ref(false)
+const inlinePreviewActive = ref(false)
 let abortCtl: AbortController | null = null
+let desktopMql: MediaQueryList | null = null
+
+function syncDesktopMq() {
+  if (typeof window === 'undefined') return
+  desktop.value = window.matchMedia('(min-width: 768px)').matches
+}
+
+onMounted(() => {
+  syncDesktopMq()
+  desktopMql = window.matchMedia('(min-width: 768px)')
+  desktopMql.addEventListener('change', syncDesktopMq)
+})
+
+onUnmounted(() => {
+  desktopMql?.removeEventListener('change', syncDesktopMq)
+})
 
 const drawerSub = computed(() => {
   if (displayResult.value) return ''
@@ -181,13 +245,18 @@ const drawerSub = computed(() => {
   return '正在生成结构化白话，请稍候…'
 })
 
-function onDrawerClosed() {
+function resetPreviewSession() {
   abortCtl?.abort()
   abortCtl = null
   loading.value = false
   statusMessage.value = ''
   finalResult.value = null
   streamingPreview.value = null
+  inlinePreviewActive.value = false
+}
+
+function onDrawerClosed() {
+  resetPreviewSession()
 }
 
 function beforeOcrUpload(file: UploadRawFile) {
@@ -222,7 +291,7 @@ async function runOcrUpload(options: UploadRequestOptions) {
     const ax = e as { response?: { data?: { detail?: string } } }
     const d = ax.response?.data?.detail
     ElMessage.error(typeof d === 'string' ? d : '识别失败，请稍后重试')
-    options.onError?.(e as Error)
+    options.onError?.(e as never)
   } finally {
     ocrLoading.value = false
   }
@@ -245,7 +314,14 @@ async function onGenerate() {
   statusMessage.value = ''
   finalResult.value = null
   streamingPreview.value = null
-  drawerVisible.value = true
+  syncDesktopMq()
+  if (desktop.value) {
+    inlinePreviewActive.value = true
+    drawerVisible.value = false
+  } else {
+    inlinePreviewActive.value = false
+    drawerVisible.value = true
+  }
   loading.value = true
   abortCtl = new AbortController()
   const signal = abortCtl.signal
@@ -265,7 +341,16 @@ async function onGenerate() {
     },
     onError: (detail: string) => {
       ElMessage.error(detail)
-      drawerVisible.value = false
+      syncDesktopMq()
+      if (!desktop.value) {
+        drawerVisible.value = false
+      } else {
+        inlinePreviewActive.value = false
+      }
+      loading.value = false
+      statusMessage.value = ''
+      finalResult.value = null
+      streamingPreview.value = null
     },
   }
 
@@ -287,9 +372,88 @@ async function onGenerate() {
 
 <style scoped>
 .explain-page {
+  width: 100%;
   max-width: 52rem;
   margin-left: auto;
   margin-right: auto;
+}
+
+@media (min-width: 768px) {
+  .explain-page {
+    max-width: min(90rem, 100%);
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+  }
+}
+
+.explain-shell {
+  display: block;
+}
+
+@media (min-width: 768px) {
+  .explain-shell {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+  }
+}
+
+.explain-shell-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.explain-preview-aside {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .explain-preview-aside {
+    display: block;
+    flex: 0 0 min(40%, 26rem);
+    max-width: 28rem;
+  }
+}
+
+.explain-preview-sticky {
+  position: sticky;
+  top: 5.5rem;
+  max-height: calc(100vh - 6.5rem);
+  overflow: auto;
+  padding-bottom: 0.5rem;
+}
+
+.explain-preview-empty {
+  border: 1px dashed rgba(15, 118, 110, 0.35);
+  border-radius: 1rem;
+  padding: 1.35rem 1.2rem 1.45rem;
+  background: linear-gradient(180deg, rgba(250, 250, 249, 0.95) 0%, rgba(240, 253, 250, 0.35) 100%);
+}
+
+.explain-preview-empty-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #0f766e;
+}
+
+.explain-preview-empty-desc {
+  margin: 0;
+  font-size: 1.02rem;
+  line-height: 1.6;
+  color: #57534e;
+}
+
+.explain-preview-pane {
+  border-radius: 1.05rem;
+  border: 1px solid rgba(120, 113, 108, 0.2);
+  background: #fafaf9;
+  box-shadow: 0 4px 18px rgba(28, 25, 23, 0.06);
+  overflow: hidden;
+}
+
+.explain-preview-body {
+  padding: 1rem 1.15rem 1.25rem;
 }
 
 .explain-hero {
