@@ -25,6 +25,9 @@ export interface ExplainResponse {
   warnings: string[]
 }
 
+/** SSE `partial` 事件里 `data` 的形状（与 ExplainResponse 相同字段，无 record_id） */
+export type ExplainPartialPayload = Omit<ExplainResponse, 'record_id'>
+
 export type ExplainStreamStatus = {
   stage?: string
   message?: string
@@ -32,6 +35,8 @@ export type ExplainStreamStatus = {
 
 export type ExplainStreamCallbacks = {
   onDelta?: (text: string) => void
+  /** 服务端在流式过程中解析出的结构化片段，用于前端渐进渲染 */
+  onPartial?: (data: ExplainPartialPayload) => void
   onDone?: (result: ExplainResponse) => void
   onError?: (detail: string) => void
   onStatus?: (status: ExplainStreamStatus) => void
@@ -94,7 +99,9 @@ async function runPolicyExplainSse(
           continue
         }
         if (evName === 'delta' && typeof ev.text === 'string') callbacks.onDelta?.(ev.text)
-        else if (evName === 'error' && typeof ev.detail === 'string') {
+        else if (evName === 'partial' && ev.data != null && typeof ev.data === 'object' && !Array.isArray(ev.data)) {
+          callbacks.onPartial?.(ev.data as ExplainPartialPayload)
+        } else if (evName === 'error' && typeof ev.detail === 'string') {
           callbacks.onError?.(ev.detail)
           return true
         } else if (evName === 'done') {
@@ -129,7 +136,7 @@ async function runPolicyExplainSse(
   }
 }
 
-/** POST /policy/explain：SSE，`event` 为 `delta` | `done` | `error` */
+/** POST /policy/explain：SSE，`event` 为 `partial` | `done` | `error`（兼容旧版 `delta`） */
 export async function explainPolicyStream(
   data: ExplainPayload,
   callbacks: ExplainStreamCallbacks,

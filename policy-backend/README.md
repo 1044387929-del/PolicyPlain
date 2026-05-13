@@ -54,5 +54,5 @@ uv run uvicorn main:app --reload --host 127.0.0.1 --port 8000
 - 在 **`settings/setting.env`** 或根目录 **`.env`** 中配置 **`DASHSCOPE_API_KEY`**（与 hr-backend 的 `DASHSCOPE_API_KEY` 一致）或 **`OPENAI_API_KEY`** 任一即可；**优先读 `DASHSCOPE_API_KEY`**，避免本机环境里空的 `OPENAI_API_KEY` 把百炼密钥「盖住」。
 - 默认 **`OPENAI_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1`**、**`OPENAI_MODEL=qwen3-max`**；若改用官方 OpenAI，请把 `OPENAI_BASE_URL` 设为 `https://api.openai.com/v1` 并设置对应模型名。
 - 未配置任一密钥时，`/policy/explain` 仍走流式通道，内容为 **演示用 mock JSON** 分片，便于无密钥验收。
-- **`POST /api/v1/policy/explain`** 响应为 **`text/event-stream`（SSE）**：每行 `data: {...}`，`event` 为 `delta`（模型输出增量）、`done`（含 `record_id` 与完整结构化结果）、`error`（`detail`）。服务端在收齐合法 JSON 并校验通过后写入数据库再发送 `done`。
+- **`POST /api/v1/policy/explain`** 响应为 **`text/event-stream`（SSE）**：每行 `data: {...}`，`event` 为 `partial`（流式过程中可校验的结构化片段，字段在 `data` 内）、`done`（含 `record_id` 与完整结果）、`error`（`detail`）。服务端在收齐合法 JSON 并校验通过后写入数据库再发送 `done`。
 - 若百炼返回 **401 / invalid_api_key**：在控制台重新创建 API-KEY，确认未过期、复制完整；不要在 `KEY = value` 的等号两侧加空格（部分编辑器会误配）。

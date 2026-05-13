@@ -693,6 +693,15 @@ wheels = [
 ]
 
 [[package]]
+name = "json-repair"
+version = "0.59.9"
+source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+sdist = { url = "https://mirrors.aliyun.com/pypi/packages/d9/f4/bf2e3fb48517a74c75bc08a85f781f3229cfe09fb1292d6969228be378b7/json_repair-0.59.9.tar.gz", hash = "sha256:761f495a9c0d4ff7d56aa8859b470b072f9470a8280797ea5da246736c294324" }
+wheels = [
+    { url = "https://mirrors.aliyun.com/pypi/packages/0d/6b/8c42827dc2a7ac4d28340da81f816ee89f9e0b1588497b5ada2de3aefca1/json_repair-0.59.9-py3-none-any.whl", hash = "sha256:5264909878c4214e16342485559998d9735befd6ad44a802f3768eb7b95d0a55" },
+]
+
+[[package]]
 name = "justext"
 version = "3.0.2"
 source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
@@ -907,6 +916,7 @@ dependencies = [
     { name = "fastapi" },
     { name = "fastapi-mail" },
     { name = "httpx" },
+    { name = "json-repair" },
     { name = "openai" },
     { name = "pwdlib", extra = ["argon2"] },
     { name = "pydantic" },
@@ -929,6 +939,7 @@ requires-dist = [
     { name = "fastapi", specifier = "==0.124.2" },
     { name = "fastapi-mail", specifier = "==1.6.0" },
     { name = "httpx", specifier = "==0.28.1" },
+    { name = "json-repair", specifier = ">=0.59.9" },
     { name = "openai", specifier = ">=1.55.0" },
     { name = "pwdlib", extras = ["argon2"], specifier = "==0.3.0" },
     { name = "pydantic", specifier = "==2.12.5" },

@@ -3,6 +3,7 @@ import uuid
 from collections.abc import AsyncIterator
 
 import httpx
+import json_repair
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from openai import APIError, AuthenticationError
@@ -27,6 +28,7 @@ from services.explain_llm import (
     normalize_to_schema,
     sse_event,
 )
+from services.streaming_partial import try_normalize_streaming_explain
 from services.url_fetch import assert_public_http_url, fetch_html, html_to_plain_text
 from settings import settings
 
@@ -47,10 +49,19 @@ async def _stream_explain_and_save(
         return
 
     acc = ""
+    last_partial_sig: str | None = None
+    tick = 0
     try:
         async for piece in llm_token_stream(text_for_llm, topic):
             acc += piece
-            yield sse_event({"event": "delta", "text": piece})
+            tick += 1
+            if tick % 2 == 0 or len(piece) > 100:
+                partial = try_normalize_streaming_explain(acc)
+                if partial:
+                    sig = json.dumps(partial, ensure_ascii=False, sort_keys=True)
+                    if sig != last_partial_sig:
+                        last_partial_sig = sig
+                        yield sse_event({"event": "partial", "data": partial})
     except AuthenticationError:
         yield sse_event(
             {
@@ -69,8 +80,11 @@ async def _stream_explain_and_save(
     try:
         raw = json.loads(acc)
     except json.JSONDecodeError:
-        yield sse_event({"event": "error", "detail": "模型输出不是合法 JSON，无法保存记录"})
-        return
+        try:
+            raw = json_repair.loads(acc)
+        except Exception:
+            yield sse_event({"event": "error", "detail": "模型输出不是合法 JSON，无法保存记录"})
+            return
 
     try:
         normalized = normalize_to_schema(raw)
@@ -114,7 +128,7 @@ async def explain(
     session: AsyncSession = Depends(get_session_instance),
     current: UserModel = Depends(get_current_user),
 ):
-    """流式解读：SSE，`event` 为 `delta` | `done` | `error`。"""
+    """流式解读：SSE，`event` 为 `partial`（可解析的中间结果）| `done` | `error`。"""
     text = body.text.strip()
     if not text:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="文本不能为空")

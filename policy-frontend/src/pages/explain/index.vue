@@ -109,23 +109,36 @@
       <template #header>
         <div class="drawer-header-inner">
           <span class="drawer-title">白话解读</span>
-          <span v-if="loading && !result" class="drawer-sub">{{ drawerSub }}</span>
+          <span v-if="loading && !displayResult" class="drawer-sub">{{ drawerSub }}</span>
         </div>
       </template>
 
       <div class="drawer-body-root">
-        <template v-if="!result">
-          <div v-if="statusMessage && !streamText" class="drawer-status">{{ statusMessage }}</div>
-          <div v-if="loading && !streamText && !statusMessage" class="drawer-connect">
-            <el-icon class="drawer-connect-icon is-loading"><Loading /></el-icon>
-            <p>正在连接服务器…</p>
-          </div>
-          <div v-if="streamText.length > 0" ref="streamScrollRef" class="drawer-stream">
-            {{ streamText }}
+        <div v-if="statusMessage" class="drawer-status">{{ statusMessage }}</div>
+        <template v-if="!displayResult && loading">
+          <div class="drawer-generating drawer-generating--wait">
+            <div class="drawer-gen-head">
+              <el-icon class="drawer-gen-icon is-loading"><Loading /></el-icon>
+              <div>
+                <p class="drawer-gen-title">正在生成白话解读</p>
+                <p class="drawer-gen-desc">
+                  服务端通过 SSE 推送可解析的结构化片段，下方会随推送<strong>逐步出现</strong>摘要与条目；完成后会保存记录并支持自动朗读。
+                </p>
+              </div>
+            </div>
+            <el-skeleton animated :rows="4" class="drawer-wait-skel" />
           </div>
         </template>
-        <div v-else class="drawer-result">
-          <ExplainResultElder :result="result" :animate-entry="true" :auto-speak-when-ready="true" />
+        <div v-else-if="displayResult" class="drawer-result">
+          <ExplainResultElder
+            :key="displayResult.record_id"
+            :result="displayResult"
+            :animate-entry="displayResult.record_id !== STREAMING_RECORD_ID"
+            :auto-speak-when-ready="displayResult.record_id !== STREAMING_RECORD_ID"
+          />
+          <p v-if="displayResult.record_id === STREAMING_RECORD_ID" class="drawer-stream-hint">
+            内容仍在补充中，请稍候…
+          </p>
         </div>
       </div>
     </el-drawer>
@@ -133,42 +146,45 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue'
+import { computed, ref, shallowRef } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Loading } from '@element-plus/icons-vue'
 import ExplainResultElder from '@/components/ExplainResultElder.vue'
 import {
   explainPolicyStream,
   explainPolicyStreamFromUrl,
+  type ExplainPartialPayload,
   type ExplainResponse,
 } from '@/apis/policy_api'
+
+const STREAMING_RECORD_ID = '__streaming__'
 
 const topic = ref<'general' | 'medical_insurance' | 'pension'>('general')
 const sourceMode = ref<'paste' | 'url'>('paste')
 const text = ref('')
 const pageUrl = ref('')
 const loading = ref(false)
-const result = ref<ExplainResponse | null>(null)
-const streamText = ref('')
+const finalResult = shallowRef<ExplainResponse | null>(null)
+const streamingPreview = shallowRef<ExplainResponse | null>(null)
 const statusMessage = ref('')
+
+const displayResult = computed(() => finalResult.value ?? streamingPreview.value)
 const drawerVisible = ref(false)
-const streamScrollRef = ref<HTMLElement | null>(null)
 let abortCtl: AbortController | null = null
 
 const drawerSub = computed(() => {
-  if (result.value) return ''
+  if (displayResult.value) return ''
   if (statusMessage.value) return statusMessage.value
-  if (streamText.value) return '正在流式接收白话解读…'
-  return '正在处理，请稍候…'
+  return '正在生成结构化白话，请稍候…'
 })
 
 function onDrawerClosed() {
   abortCtl?.abort()
   abortCtl = null
   loading.value = false
-  streamText.value = ''
   statusMessage.value = ''
-  result.value = null
+  finalResult.value = null
+  streamingPreview.value = null
 }
 
 async function onGenerate() {
@@ -191,9 +207,9 @@ async function onGenerate() {
     }
   }
 
-  streamText.value = ''
   statusMessage.value = ''
-  result.value = null
+  finalResult.value = null
+  streamingPreview.value = null
   drawerVisible.value = true
   loading.value = true
   abortCtl = new AbortController()
@@ -203,22 +219,18 @@ async function onGenerate() {
     onStatus: (s: { message?: string }) => {
       if (s.message) statusMessage.value = s.message
     },
-    onDelta: (t: string) => {
-      if (!streamText.value) statusMessage.value = ''
-      streamText.value += t
-      void nextTick(() => {
-        const el = streamScrollRef.value
-        if (el) el.scrollTop = el.scrollHeight
-      })
+    onPartial: (data: ExplainPartialPayload) => {
+      streamingPreview.value = { record_id: STREAMING_RECORD_ID, ...data }
     },
     onDone: (r: ExplainResponse) => {
-      streamText.value = ''
       statusMessage.value = ''
-      result.value = r
+      streamingPreview.value = null
+      finalResult.value = r
       ElMessage.success('解读完成')
     },
     onError: (detail: string) => {
       ElMessage.error(detail)
+      drawerVisible.value = false
     },
   }
 
@@ -521,38 +533,65 @@ async function onGenerate() {
   border-radius: 0.75rem;
 }
 
-.drawer-connect {
+.drawer-generating {
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  padding: 2rem 1rem;
-  font-size: 1.2rem;
-  color: #44403c;
-}
-
-.drawer-connect-icon {
-  font-size: 2.5rem;
-  color: #d97706;
-}
-
-.drawer-stream {
-  flex: 1;
-  min-height: 12rem;
-  max-height: 100%;
+  gap: 1.25rem;
   overflow-y: auto;
-  white-space: pre-wrap;
-  word-break: break-word;
-  font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: 1.15rem;
-  line-height: 1.75;
-  color: #292524;
-  padding: 1rem 1.1rem;
-  border-radius: 0.75rem;
+}
+
+.drawer-gen-head {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  padding: 1rem 1.15rem;
+  border-radius: 0.85rem;
   background: #fff;
   border: 1px solid #e7e5e4;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  box-shadow: 0 2px 10px rgba(28, 25, 23, 0.04);
+}
+
+.drawer-gen-icon {
+  flex-shrink: 0;
+  font-size: 2rem;
+  color: #0f766e;
+  margin-top: 0.15rem;
+}
+
+.drawer-gen-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0c0a09;
+}
+
+.drawer-gen-desc {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.55;
+  color: #57534e;
+}
+
+.drawer-generating--wait {
+  justify-content: flex-start;
+}
+
+.drawer-wait-skel {
+  margin-top: 0.25rem;
+}
+
+.drawer-stream-hint {
+  margin: 1rem 0 0;
+  padding: 0.85rem 1rem;
+  font-size: 1.05rem;
+  line-height: 1.5;
+  color: #57534e;
+  text-align: center;
+  border-radius: 0.65rem;
+  background: rgba(15, 118, 110, 0.08);
+  border: 1px solid rgba(15, 118, 110, 0.2);
 }
 
 .drawer-result {
