@@ -12,6 +12,14 @@
       </div>
     </div>
 
+    <div
+      class="explain-atmosphere"
+      aria-hidden="true"
+      :style="{
+        backgroundImage: `linear-gradient(105deg, rgba(255,251,235,0.94) 0%, rgba(240,253,250,0.86) 42%, rgba(255,255,255,0.72) 100%), url(${IMG_EXPLAIN_HERO})`,
+      }"
+    />
+
     <div class="explain-workbench">
       <div class="explain-input-workspace">
         <header class="explain-lead explain-lead--compact">
@@ -229,6 +237,7 @@ import {
   type ExplainPartialPayload,
   type ExplainResponse,
 } from '@/apis/policy_api'
+import { IMG_EXPLAIN_HERO } from '@/constants/elderImagery'
 
 const STREAMING_RECORD_ID = '__streaming__'
 
@@ -479,6 +488,23 @@ async function onGenerate() {
   padding-bottom: 0.65rem;
   border-radius: 0 0 1rem 1rem;
   z-index: 6;
+}
+
+.explain-atmosphere {
+  margin-bottom: 0.55rem;
+  height: 3.25rem;
+  border-radius: 1rem;
+  background-size: cover;
+  background-position: center 38%;
+  border: 1px solid rgba(15, 118, 110, 0.14);
+  box-shadow: 0 2px 12px rgba(15, 118, 110, 0.06);
+}
+
+@media (min-width: 768px) {
+  .explain-atmosphere {
+    height: 4.25rem;
+    margin-bottom: 0.65rem;
+  }
 }
 
 .explain-lead {
