@@ -15,58 +15,12 @@
     <header class="explain-lead">
       <h1 class="explain-lead-title">白话解读与追问</h1>
       <p class="explain-lead-desc">
-        页面主体展示<strong>生成结果</strong>与<strong>追问对话</strong>。右侧填写政策材料后点「生成」；手机端结果在侧滑抽屉中打开。
+        下方<strong>大输入区</strong>粘贴政策材料并生成；宽屏时点击右侧「解读」可<strong>展开或收起</strong>结果与对话栏。手机端仍在侧滑抽屉中查看。
       </p>
     </header>
 
-    <div class="explain-shell">
-      <section class="explain-main-stage" aria-label="白话解读与追问">
-        <div class="explain-main-sticky">
-          <div v-if="!inlinePreviewActive" class="explain-preview-empty">
-            <p class="explain-preview-empty-title">在此查看解读与对话</p>
-            <p class="explain-preview-empty-desc">
-              宽屏下此处占据主要区域：生成中的进度、结构化白话、朗读与追问都会显示在这里。请先在<strong>右侧</strong>粘贴正文、填写链接或上传截图，再点「生成白话解读」。
-            </p>
-          </div>
-          <div v-else class="explain-preview-pane">
-            <div class="drawer-body-root explain-preview-body">
-              <div v-if="statusMessage" class="drawer-status">{{ statusMessage }}</div>
-              <template v-if="!displayResult && loading">
-                <div class="drawer-generating drawer-generating--wait">
-                  <div class="drawer-gen-head">
-                    <el-icon class="drawer-gen-icon is-loading"><Loading /></el-icon>
-                    <div>
-                      <p class="drawer-gen-title">正在生成白话解读</p>
-                      <p class="drawer-gen-desc">
-                        服务端通过 SSE 推送可解析的结构化片段，下方会随推送<strong>逐步出现</strong>摘要与条目；完成后会保存记录并支持自动朗读。
-                      </p>
-                    </div>
-                  </div>
-                  <el-skeleton animated :rows="4" class="drawer-wait-skel" />
-                </div>
-              </template>
-              <div v-else-if="displayResult" class="drawer-result">
-                <ExplainResultElder
-                  :key="displayResult.record_id"
-                  :result="displayResult"
-                  :animate-entry="displayResult.record_id !== STREAMING_RECORD_ID"
-                  :auto-speak-when-ready="displayResult.record_id !== STREAMING_RECORD_ID"
-                />
-                <FollowUpChat
-                  v-if="displayResult.record_id !== STREAMING_RECORD_ID"
-                  :key="displayResult.record_id"
-                  :record-id="displayResult.record_id"
-                />
-                <p v-if="displayResult.record_id === STREAMING_RECORD_ID" class="drawer-stream-hint">
-                  内容仍在补充中，请稍候…
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <div class="explain-input-column">
+    <div class="explain-workbench">
+      <div class="explain-input-workspace">
         <section class="explain-card explain-card--notice">
           <el-alert type="warning" show-icon :closable="false" class="explain-alert">
             <template #title>
@@ -92,9 +46,9 @@
             <el-input
               v-model="text"
               type="textarea"
-              :rows="8"
+              :rows="textareaRows"
               placeholder="把通知、办事指南或政策条文粘贴到此处；也可先上传截图，识别结果会出现在这里…"
-              class="explain-textarea"
+              class="explain-textarea explain-textarea--primary"
             />
             <p class="explain-char-count">当前字数：{{ text.length }}</p>
           </div>
@@ -133,12 +87,78 @@
           </div>
         </section>
 
-        <section class="explain-cta-wrap explain-cta-wrap--sidebar">
+        <section class="explain-cta-wrap">
           <el-button type="primary" size="large" class="explain-cta-btn" :loading="loading" @click="onGenerate">
             生成白话解读
           </el-button>
         </section>
       </div>
+
+      <aside
+        v-show="desktop"
+        class="explain-preview-rail"
+        :class="{ 'explain-preview-rail--open': previewPanelExpanded }"
+        aria-label="解读预览侧栏"
+      >
+        <button
+          type="button"
+          class="explain-rail-handle"
+          :aria-expanded="previewPanelExpanded"
+          :title="previewPanelExpanded ? '收起解读栏' : '展开解读栏'"
+          @click="togglePreviewRail"
+        >
+          <el-icon class="explain-rail-handle-icon" aria-hidden="true">
+            <Fold v-if="previewPanelExpanded" />
+            <Expand v-else />
+          </el-icon>
+          <span class="explain-rail-handle-label">{{ previewPanelExpanded ? '收起' : '解读' }}</span>
+        </button>
+        <div v-show="previewPanelExpanded" class="explain-rail-panel">
+          <div class="explain-rail-panel-inner">
+            <div v-if="!inlinePreviewActive" class="explain-preview-empty">
+              <p class="explain-preview-empty-title">解读与追问</p>
+              <p class="explain-preview-empty-desc">
+                点击屏幕<strong>右侧</strong>竖条「解读」展开本栏。生成开始后这里会显示进度与结果；完成后可在此追问。若已收起，可随时再点「解读」打开。
+              </p>
+            </div>
+            <div v-else class="explain-preview-pane">
+              <div class="drawer-body-root explain-preview-body">
+                <div v-if="statusMessage" class="drawer-status">{{ statusMessage }}</div>
+                <template v-if="!displayResult && loading">
+                  <div class="drawer-generating drawer-generating--wait">
+                    <div class="drawer-gen-head">
+                      <el-icon class="drawer-gen-icon is-loading"><Loading /></el-icon>
+                      <div>
+                        <p class="drawer-gen-title">正在生成白话解读</p>
+                        <p class="drawer-gen-desc">
+                          服务端通过 SSE 推送可解析的结构化片段，下方会随推送<strong>逐步出现</strong>摘要与条目；完成后会保存记录并支持自动朗读。
+                        </p>
+                      </div>
+                    </div>
+                    <el-skeleton animated :rows="4" class="drawer-wait-skel" />
+                  </div>
+                </template>
+                <div v-else-if="displayResult" class="drawer-result">
+                  <ExplainResultElder
+                    :key="displayResult.record_id"
+                    :result="displayResult"
+                    :animate-entry="displayResult.record_id !== STREAMING_RECORD_ID"
+                    :auto-speak-when-ready="displayResult.record_id !== STREAMING_RECORD_ID"
+                  />
+                  <FollowUpChat
+                    v-if="displayResult.record_id !== STREAMING_RECORD_ID"
+                    :key="displayResult.record_id"
+                    :record-id="displayResult.record_id"
+                  />
+                  <p v-if="displayResult.record_id === STREAMING_RECORD_ID" class="drawer-stream-hint">
+                    内容仍在补充中，请稍候…
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
     </div>
 
     <el-drawer
@@ -200,7 +220,7 @@
 import { computed, onMounted, onUnmounted, ref, shallowRef } from 'vue'
 import type { UploadRawFile, UploadRequestOptions } from 'element-plus'
 import { ElMessage } from 'element-plus'
-import { Loading } from '@element-plus/icons-vue'
+import { Loading, Expand, Fold } from '@element-plus/icons-vue'
 import ExplainResultElder from '@/components/ExplainResultElder.vue'
 import FollowUpChat from '@/components/FollowUpChat.vue'
 import {
@@ -226,6 +246,10 @@ const displayResult = computed(() => finalResult.value ?? streamingPreview.value
 const drawerVisible = ref(false)
 const desktop = ref(false)
 const inlinePreviewActive = ref(false)
+/** 宽屏右侧解读栏是否展开（收起时仅显示窄竖条，主区留给输入） */
+const previewPanelExpanded = ref(false)
+
+const textareaRows = computed(() => (desktop.value ? 14 : 10))
 let abortCtl: AbortController | null = null
 let desktopMql: MediaQueryList | null = null
 
@@ -250,6 +274,10 @@ const drawerSub = computed(() => {
   return '正在生成结构化白话，请稍候…'
 })
 
+function togglePreviewRail() {
+  previewPanelExpanded.value = !previewPanelExpanded.value
+}
+
 function resetPreviewSession() {
   abortCtl?.abort()
   abortCtl = null
@@ -258,6 +286,7 @@ function resetPreviewSession() {
   finalResult.value = null
   streamingPreview.value = null
   inlinePreviewActive.value = false
+  previewPanelExpanded.value = false
 }
 
 function onDrawerClosed() {
@@ -322,6 +351,7 @@ async function onGenerate() {
   syncDesktopMq()
   if (desktop.value) {
     inlinePreviewActive.value = true
+    previewPanelExpanded.value = true
     drawerVisible.value = false
   } else {
     inlinePreviewActive.value = false
@@ -470,89 +500,167 @@ async function onGenerate() {
   font-weight: 700;
 }
 
-.explain-shell {
+.explain-workbench {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1rem;
+  border-radius: 1.1rem;
+  border: 1px solid rgba(15, 118, 110, 0.12);
+  background: rgba(255, 255, 255, 0.45);
+  box-shadow: 0 2px 20px rgba(15, 118, 110, 0.06);
+  overflow: hidden;
 }
 
 @media (min-width: 768px) {
-  .explain-shell {
+  .explain-workbench {
     flex-direction: row;
-    align-items: flex-start;
-    gap: 1.35rem;
+    align-items: stretch;
+    gap: 0;
   }
 }
 
-.explain-main-stage {
+.explain-input-workspace {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 1rem 1rem 0.5rem;
+}
+
+@media (min-width: 768px) {
+  .explain-input-workspace {
+    padding: 1.25rem 1.35rem 1rem;
+  }
+}
+
+.explain-preview-rail {
   display: none;
-  min-width: 0;
 }
 
 @media (min-width: 768px) {
-  .explain-main-stage {
-    display: block;
-    flex: 1 1 0;
-    order: -1;
-    min-height: min(70vh, 36rem);
+  .explain-preview-rail {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    flex-shrink: 0;
+    width: 3rem;
+    max-height: calc(100vh - 7rem);
+    transition:
+      width 0.28s ease,
+      box-shadow 0.28s ease;
+    border-left: 1px solid rgba(15, 118, 110, 0.18);
+    background: linear-gradient(180deg, #ecfdf5 0%, #fffbeb 100%);
+    box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.5);
+  }
+
+  .explain-preview-rail--open {
+    width: min(42vw, 28rem);
+    max-width: 32rem;
+    box-shadow: -6px 0 24px rgba(28, 25, 23, 0.08);
   }
 }
 
-.explain-input-column {
+.explain-rail-handle {
   flex-shrink: 0;
-  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 3rem;
+  min-height: 8rem;
+  margin: 0;
+  padding: 0.75rem 0.25rem;
+  border: none;
+  border-right: 1px solid rgba(15, 118, 110, 0.12);
+  cursor: pointer;
+  background: linear-gradient(180deg, rgba(15, 118, 110, 0.12) 0%, rgba(180, 83, 9, 0.08) 100%);
+  color: #0f766e;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
-@media (min-width: 768px) {
-  .explain-input-column {
-    flex: 0 0 min(22rem, 32vw);
-    max-width: 26rem;
-  }
+.explain-rail-handle:hover {
+  background: linear-gradient(180deg, rgba(15, 118, 110, 0.2) 0%, rgba(180, 83, 9, 0.12) 100%);
+  color: #115e59;
+}
+
+.explain-rail-handle-icon {
+  font-size: 1.25rem;
+}
+
+.explain-rail-handle-label {
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+.explain-preview-rail--open .explain-rail-handle-label {
+  writing-mode: horizontal-tb;
+  letter-spacing: 0.02em;
+}
+
+.explain-rail-panel {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.explain-rail-panel-inner {
+  flex: 1;
+  min-height: 0;
+  min-height: min(62vh, 28rem);
+  overflow: auto;
+  padding: 0.65rem 0.75rem 1rem 0.5rem;
 }
 
 .explain-main-sticky {
-  position: sticky;
-  top: 5.5rem;
-  max-height: calc(100vh - 6.25rem);
-  overflow: auto;
-  padding-bottom: 0.5rem;
+  position: relative;
+  max-height: none;
+  overflow: visible;
+  padding-bottom: 0;
 }
 
 .explain-preview-empty {
   border: 1px dashed rgba(15, 118, 110, 0.35);
-  border-radius: 1rem;
-  padding: 1.5rem 1.25rem 1.65rem;
-  min-height: min(48vh, 26rem);
+  border-radius: 0.85rem;
+  padding: 1.1rem 1rem 1.2rem;
+  min-height: 10rem;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  background: linear-gradient(180deg, rgba(250, 250, 249, 0.98) 0%, rgba(240, 253, 250, 0.45) 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 253, 250, 0.4) 100%);
 }
 
 .explain-preview-empty-title {
-  margin: 0 0 0.55rem;
-  font-size: 1.35rem;
+  margin: 0 0 0.45rem;
+  font-size: 1.15rem;
   font-weight: 800;
   color: #0f766e;
 }
 
 .explain-preview-empty-desc {
   margin: 0;
-  font-size: 1.05rem;
-  line-height: 1.65;
+  font-size: 0.98rem;
+  line-height: 1.55;
   color: #57534e;
 }
 
 .explain-preview-pane {
-  border-radius: 1.05rem;
-  border: 1px solid rgba(120, 113, 108, 0.2);
+  border-radius: 0.85rem;
+  border: 1px solid rgba(120, 113, 108, 0.18);
   background: #fafaf9;
-  box-shadow: 0 4px 18px rgba(28, 25, 23, 0.06);
+  box-shadow: 0 2px 12px rgba(28, 25, 23, 0.05);
   overflow: hidden;
 }
 
 .explain-preview-body {
-  padding: 1rem 1.15rem 1.25rem;
+  padding: 0.85rem 1rem 1rem;
+}
+
+.explain-textarea--primary :deep(.el-textarea__inner) {
+  min-height: min(52vh, 22rem);
 }
 
 .explain-radio-row--top {
@@ -729,8 +837,7 @@ async function onGenerate() {
 }
 
 @media (min-width: 768px) {
-  .explain-cta-wrap--sidebar {
-    margin-top: 0;
+  .explain-cta-wrap {
     padding-bottom: 0.75rem;
   }
 }
