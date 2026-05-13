@@ -664,13 +664,6 @@ async function onGenerate() {
   padding: 0.65rem 0.75rem 1rem 0.5rem;
 }
 
-.explain-main-sticky {
-  position: relative;
-  max-height: none;
-  overflow: visible;
-  padding-bottom: 0;
-}
-
 .explain-preview-empty {
   border: 1px dashed rgba(15, 118, 110, 0.35);
   border-radius: 0.85rem;
