@@ -70,11 +70,14 @@ class Settings(BaseSettings):
     POLICY_TEXT_MAX_CHARS: int = Field(default=12000, validation_alias="POLICY_TEXT_MAX_CHARS")
     LLM_TIMEOUT_SECONDS: float = Field(default=120.0, validation_alias="LLM_TIMEOUT_SECONDS")
 
-    # 与 hr-backend 一致：百炼 DashScope OpenAI 兼容模式 + 通义千问；密钥可读 OPENAI_API_KEY 或 DASHSCOPE_API_KEY
-    OPENAI_API_KEY: str = Field(
-        default="",
-        validation_alias=AliasChoices("OPENAI_API_KEY", "DASHSCOPE_API_KEY"),
-    )
+    URL_FETCH_TIMEOUT_SECONDS: float = Field(default=30.0, validation_alias="URL_FETCH_TIMEOUT_SECONDS")
+    URL_FETCH_MAX_BYTES: int = Field(default=2_000_000, ge=10_000, le=10_000_000, validation_alias="URL_FETCH_MAX_BYTES")
+    URL_FETCH_MAX_REDIRECTS: int = Field(default=5, ge=0, le=15, validation_alias="URL_FETCH_MAX_REDIRECTS")
+    URL_EXTRACT_MAX_CHARS: int = Field(default=18_000, ge=2000, le=100_000, validation_alias="URL_EXTRACT_MAX_CHARS")
+
+    # 百炼与 OpenAI 兼容接口分字段读取：优先 DASHSCOPE_API_KEY，避免系统/空 OPENAI_API_KEY 覆盖百炼密钥
+    DASHSCOPE_API_KEY: str = Field(default="", validation_alias="DASHSCOPE_API_KEY")
+    OPENAI_API_KEY: str = Field(default="", validation_alias="OPENAI_API_KEY")
     OPENAI_BASE_URL: str = Field(
         default="https://dashscope.aliyuncs.com/compatible-mode/v1",
         validation_alias="OPENAI_BASE_URL",
@@ -102,6 +105,14 @@ class Settings(BaseSettings):
     REGISTER_CODE_RESEND_SECONDS: int = Field(
         default=60, ge=15, le=600, validation_alias="REGISTER_CODE_RESEND_SECONDS"
     )
+
+    @property
+    def llm_api_key(self) -> str:
+        """调用兼容 OpenAI 接口时使用的密钥：显式百炼密钥优先，其次 OPENAI_API_KEY。"""
+        d = self.DASHSCOPE_API_KEY.strip()
+        if d:
+            return d
+        return self.OPENAI_API_KEY.strip()
 
     @property
     def mail_configured(self) -> bool:

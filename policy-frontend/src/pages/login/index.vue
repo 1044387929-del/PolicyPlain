@@ -1,6 +1,6 @@
 <template>
   <AuthLayout subtitle="登录后继续">
-    <el-form ref="formRef" :model="form" :rules="rules" label-position="top" @submit.prevent="submit">
+    <el-form ref="formRef" class="auth-form-tall" :model="form" :rules="rules" label-position="top" @submit.prevent="submit">
       <el-form-item label="邮箱" prop="email">
         <el-input v-model="form.email" size="large" type="email" autocomplete="email" placeholder="name@example.com" />
       </el-form-item>
@@ -9,7 +9,7 @@
       </el-form-item>
       <el-button type="primary" native-type="submit" class="w-full" size="large">登录</el-button>
     </el-form>
-    <p class="mt-6 text-center text-sm text-stone-500">
+    <p class="mt-6 text-center text-base text-stone-600">
       没有账号？
       <router-link to="/register" class="text-teal-700 font-medium">注册</router-link>
     </p>

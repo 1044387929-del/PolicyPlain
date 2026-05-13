@@ -1,6 +1,6 @@
 <template>
   <AuthLayout subtitle="注册新账号（邮箱验证码）">
-    <el-form ref="formRef" :model="form" :rules="rules" label-position="top" @submit.prevent="submit">
+    <el-form ref="formRef" class="auth-form-tall" :model="form" :rules="rules" label-position="top" @submit.prevent="submit">
       <el-form-item label="邮箱" prop="email">
         <div class="flex gap-2 w-full">
           <el-input

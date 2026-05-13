@@ -9,6 +9,11 @@ class ExplainRequest(BaseModel):
     topic: str | None = Field(default="general")
 
 
+class ExplainFromUrlRequest(BaseModel):
+    url: str
+    topic: str | None = Field(default="general")
+
+
 class ExplainResultFields(BaseModel):
     summary_one_line: str = ""
     applicability: list[str] = Field(default_factory=list)
