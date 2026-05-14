@@ -76,9 +76,10 @@
             </p>
           </div>
 
-          <div class="explain-ocr-row">
+          <div class="explain-ocr-row" tabindex="0" @paste="onOcrAreaPaste">
             <p class="explain-ocr-hint">
-              拍了纸质通知、电子版截图？上传 <strong>JPG / PNG / WebP</strong>（单张不超过 8MB），识别文字会<strong>追加到上方原文框</strong>。需服务端配置
+              拍了纸质通知、电子版截图？上传 <strong>JPG / PNG / WebP</strong>（单张不超过 8MB），识别文字会<strong>追加到上方原文框</strong>；也可<strong>先点击本虚线区域</strong>再按
+              <kbd>Ctrl</kbd>+<kbd>V</kbd>（Mac：<kbd>⌘</kbd>+<kbd>V</kbd>）粘贴剪贴板截图，效果与上传相同。需服务端配置
               <code>PADDLE_OCR_ACCESS_TOKEN</code>（与 hr-backend 相同）。
             </p>
             <el-upload
@@ -316,28 +317,64 @@ function beforeOcrUpload(file: UploadRawFile) {
   return true
 }
 
-async function runOcrUpload(options: UploadRequestOptions) {
+/** 从剪贴板取第一张符合格式的图片为 File（仅用于下方截图区粘贴） */
+function imageFileFromClipboard(e: ClipboardEvent): File | null {
+  const items = e.clipboardData?.items
+  if (!items?.length) return null
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i]
+    if (!item || item.kind !== 'file') continue
+    const mime = item.type || ''
+    if (mime !== 'image/jpeg' && mime !== 'image/png' && mime !== 'image/webp') continue
+    const blob = item.getAsFile()
+    if (!blob) continue
+    const ext = mime === 'image/jpeg' ? 'jpg' : mime === 'image/webp' ? 'webp' : 'png'
+    return new File([blob], `paste.${ext}`, { type: mime })
+  }
+  return null
+}
+
+function onOcrAreaPaste(e: ClipboardEvent) {
+  if (ocrLoading.value) return
+  const file = imageFileFromClipboard(e)
+  if (!file) return
+  e.preventDefault()
+  void runOcrOnFile(file)
+}
+
+async function runOcrOnFile(file: File, hooks?: Pick<UploadRequestOptions, 'onSuccess' | 'onError'>) {
+  if (!beforeOcrUpload(file as UploadRawFile)) {
+    hooks?.onError?.(new Error('validation') as never)
+    return
+  }
   ocrLoading.value = true
   try {
-    const res = await ocrPolicyImage(options.file as File)
+    const res = await ocrPolicyImage(file)
     const t = res.text.trim()
     if (!t) {
       ElMessage.warning('未识别到文字，请换更清晰的政策截图重试')
-      options.onSuccess(res as never)
+      hooks?.onSuccess?.(res as never)
       return
     }
     if (text.value.trim()) text.value = `${text.value.trim()}\n\n${t}`
     else text.value = t
     ElMessage.success('已填入正文框，可再编辑后点击「生成白话解读」')
-    options.onSuccess(res as never)
+    hooks?.onSuccess?.(res as never)
   } catch (e: unknown) {
     const ax = e as { response?: { data?: { detail?: string } } }
     const d = ax.response?.data?.detail
     ElMessage.error(typeof d === 'string' ? d : '识别失败，请稍后重试')
-    options.onError?.(e as never)
+    hooks?.onError?.(e as never)
   } finally {
     ocrLoading.value = false
   }
+}
+
+async function runOcrUpload(options: UploadRequestOptions) {
+  await runOcrOnFile(options.file as File, {
+    onSuccess: options.onSuccess,
+    onError: options.onError,
+  })
 }
 
 async function onGenerate() {
@@ -828,6 +865,15 @@ async function onGenerate() {
   background: rgba(240, 253, 250, 0.65);
 }
 
+.explain-ocr-row:focus {
+  outline: none;
+}
+
+.explain-ocr-row:focus-visible {
+  outline: 2px solid rgba(15, 118, 110, 0.55);
+  outline-offset: 2px;
+}
+
 .explain-ocr-hint {
   margin: 0 0 0.75rem;
   font-size: 0.95rem;
@@ -839,6 +885,21 @@ async function onGenerate() {
   font-size: 0.88rem;
   word-break: break-all;
   color: #0f766e;
+}
+
+.explain-ocr-hint kbd {
+  display: inline-block;
+  margin: 0 0.1em;
+  padding: 0.12em 0.45em;
+  font-size: 0.82rem;
+  font-family: ui-monospace, monospace;
+  line-height: 1.2;
+  vertical-align: 0.08em;
+  color: #0f766e;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(15, 118, 110, 0.35);
+  border-radius: 0.35rem;
+  box-shadow: 0 1px 0 rgba(15, 118, 110, 0.12);
 }
 
 .explain-ocr-btn {
