@@ -64,3 +64,49 @@ uv run uvicorn main:app --reload --host 127.0.0.1 --port 8000
 - 配置 **`PADDLE_OCR_ACCESS_TOKEN`**（见 `.env.example`）；可选 **`PADDLE_OCR_JOB_URL`**、**`PADDLE_OCR_MODEL_NAME`**。
 - **`POST /api/v1/policy/ocr-image`**：`multipart/form-data` 字段 **`file`**（JPG / PNG / WebP，≤ 8MB），需 **Bearer** 登录；成功返回 **`{ "text": "..." }`**。
 - 未配置 Token 时返回 **503**；识别失败返回 **502**。
+
+## 政策解读 API 与流程细节
+
+### `POST /api/v1/policy/explain`
+
+- **鉴权**：需 **Bearer** JWT。  
+- **请求体**：`text`（可选）、`url`（可选）、`topic`（`general` | `medical_insurance` | `pension`，缺省为 `general`）；**`text` 与 `url` 至少填一项**（与 Pydantic 校验一致）。  
+- **响应**：`Content-Type: text/event-stream`（SSE），每行 `data: <JSON>`。  
+- **`event` 取值**：  
+  - **`status`**：可选；含 `stage`（如 `fetch` / `parse` / `synopsis` / `explain`）与 `message`，主要在「带 URL」流程中出现。  
+  - **`partial`**：流式阶段已累积输出经 `json-repair` 等尝试解析后的**可展示片段**（无 `record_id`）。  
+  - **`done`**：成功结束，含 **`record_id`** 与完整结构化结果（已写入 `policy_explanations`）。  
+  - **`error`**：`detail` 为人类可读错误。  
+- **兼容接口**：`POST /api/v1/policy/explain-from-url` 等价于仅传 `url`、不传 `text` 的 explain。
+
+### 带 URL 时的服务端顺序（摘要）
+
+1. 校验公网 URL → **抓取 HTML**（大小与重定向次数见 **`URL_FETCH_MAX_BYTES`**、**`URL_FETCH_MAX_REDIRECTS`**）。  
+2. **HTML → 纯文本**，截断至 **`URL_EXTRACT_MAX_CHARS`**（默认 18000）。  
+3. 调用大模型 **`SYNOPSIS_SYSTEM`** 提示词，得到 JSON 中的 **`synopsis`** 字符串；过短则判为无效内容。  
+4. 将 synopsis 与用户粘贴（若有）合并为送入主解读模型的 **`text_for_llm`**，总长不超过 **`POLICY_TEXT_MAX_CHARS`**（默认 12000）。  
+5. 主解读使用 **`SYSTEM_PROMPT`**，流式 **`response_format: json_object`**，落库前严格校验。
+
+### 追问 `POST /api/v1/policy/explanations/{record_id}/follow-up`（流式）
+
+- **请求体**：JSON 含 **`question`**（非空字符串）。  
+- **响应**：SSE；成功结束事件含 **`answer`**、**`turn`**、**`followup_id`**。  
+- 针对已有 **`record_id`** 的解读；使用保存的原文摘录与结构化结果 JSON，以及该记录下已有追问轮次，调用 **`FOLLOWUP_SYSTEM`** 提示词；输出为 **纯文本** 流（非 JSON）。  
+- **每条约 3 轮追问**（代码常量 **`MAX_FOLLOWUP_ROUNDS`**，以 `policy.py` 为准）。
+
+### 历史与详情
+
+- **`GET /api/v1/policy/explanations`**：分页列表（`limit` / `offset`），仅当前用户。  
+- **`GET /api/v1/policy/explanations/{record_id}`**：单条详情（原文摘录、结构化结果、已有追问列表）。
+
+### 提示词位置（便于调优）
+
+- 主解读、网页 synopsis、追问的系统提示均在 **`services/explain_llm.py`**（`SYSTEM_PROMPT`、`SYNOPSIS_SYSTEM`、`FOLLOWUP_SYSTEM`）。
+
+### 其它可调环境变量（解读链路）
+
+- **`POLICY_TEXT_MAX_CHARS`**：送入主解读模型的最大字符数。  
+- **`URL_EXTRACT_MAX_CHARS`**：参与 synopsis 的网页纯文本上限。  
+- **`LLM_TIMEOUT_SECONDS`**：大模型请求超时。  
+
+完整列表见 **`settings/__init__.py`** 与 **`.env.example`**。
