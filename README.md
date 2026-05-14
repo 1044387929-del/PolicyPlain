@@ -99,6 +99,7 @@ npm run dev
 
 ## 文档索引
 
+- `docs/层级设计与架构.md`（**代码分层、目录职责、依赖方向**；快速定位架构所在）
 - `docs/项目需求分析.md`
 - `docs/项目概要设计.md`（与代码不一致时，以 `policy-backend` OpenAPI `/docs` 与源码为准）
 - `docs/项目实施流程与顺序.md`
